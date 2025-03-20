@@ -1,0 +1,54 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cascader
+  namespace: cascader-system
+  labels:
+    app.kubernetes.io/name: cascader
+    app.kubernetes.io/component: controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cascader
+      app.kubernetes.io/component: controller
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: cascader
+      labels:
+        app.kubernetes.io/name: cascader
+        app.kubernetes.io/component: controller
+    spec:
+      serviceAccountName: cascader
+      containers:
+        - name: cascader
+          image: ghcr.io/thurgauerkb/cascader:v0.0.1
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 10m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      securityContext:
+        runAsNonRoot: true
+      terminationGracePeriodSeconds: 10

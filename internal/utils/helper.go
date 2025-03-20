@@ -1,0 +1,77 @@
+/*
+Copyright 2025 Thurgauer Kantonalbank
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package utils
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/thurgauerkb/cascader/internal/kinds"
+)
+
+const RestartedAtKey string = "kubectl.kubernetes.io/restartedAt"
+
+// UniqueAnnotations ensures all provided annotation values are unique.
+// Returns an error if the map is empty or if any duplicate values are found.
+func UniqueAnnotations(annotations map[string]string) error {
+	if len(annotations) == 0 {
+		return errors.New("no annotations provided")
+	}
+
+	seen := make(map[string]string, len(annotations))
+	for key, val := range annotations {
+		if existingKey, exists := seen[val]; exists {
+			return fmt.Errorf("duplicate annotation '%s' found for keys '%s' and '%s'", val, existingKey, key)
+		}
+		seen[val] = key
+	}
+	return nil
+}
+
+// FormatAnnotations returns a sorted, comma-separated string representation of the annotations map.
+func FormatAnnotations(annotations map[string]string) string {
+	annotationsList := make([]string, 0, len(annotations))
+	for key, val := range annotations {
+		annotationsList = append(annotationsList, fmt.Sprintf("%s=%s", key, val))
+	}
+	sort.Strings(annotationsList) // Ensure deterministic ordering
+	return strings.Join(annotationsList, ", ")
+}
+
+// ParseTargetRef splits a target reference (e.g. "namespace/name") into its namespace and name.
+// If the reference lacks a namespace, defaultNS is used.
+func ParseTargetRef(ref, defaultNS string) (namespace, name string, err error) {
+	parts := strings.Split(ref, "/")
+	switch len(parts) {
+	case 1:
+		namespace = defaultNS
+		name = parts[0]
+	case 2:
+		namespace = parts[0]
+		name = parts[1]
+	default:
+		err = fmt.Errorf("invalid format: %s", ref)
+	}
+	return
+}
+
+// GenerateID returns a unique identifier for a resource in the format "Kind/namespace/name".
+func GenerateID(kind kinds.Kind, namespace, name string) string {
+	return fmt.Sprintf("%s/%s/%s", kind, namespace, name)
+}

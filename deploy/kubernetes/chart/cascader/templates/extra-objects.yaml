@@ -1,0 +1,5 @@
+{{- range .Values.extraObjects }}
+{{ toYaml . | nindent 0 }}
+---
+{{- end }}
+

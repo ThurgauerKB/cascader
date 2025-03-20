@@ -1,0 +1,28 @@
+{{- if .Values.metrics.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "chart.fullname" . }}-alerts
+  namespace: {{ .Values.metrics.prometheusRule.namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+    {{- with .Values.metrics.prometheusRule.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+  - name: cascader-alerts
+    rules:
+    - alert: CascaderCycleDetected
+      expr: cascader_dependency_cycles_detected > 0
+      for: 1m
+      labels:
+        severity: {{ .Values.metrics.prometheusRule.severity }}
+      annotations:
+        description: |
+          A dependency cycle has been detected in the Cascader controller.
+          Namespace: {{`{{ $labels.namespace }}`}}, Name: {{`{{ $labels.name }}`}}, Resource Kind: {{`{{ $labels.resource_kind }}`}}.
+        summary: |
+          Dependency Cycle Detected in ({{`{{ $labels.namespace }}`}}/{{`{{ $labels.name }}`}})
+{{- end }}
+
