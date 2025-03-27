@@ -35,14 +35,19 @@ const (
 	daemonSetAnnotation         string = "cascader.tkb.ch/daemonset"
 )
 
-var _ = Describe("Operator in default mode", func() {
+var _ = Describe("Operator in default mode", Ordered, func() {
 	var ns string
 
-	// Run the operator once in the background
-	testutils.StartOperatorWithFlags([]string{
-		"--leader-elect=false",
-		"--health-probe-bind-address=:8082",
-		"--metrics-enabled=false",
+	BeforeAll(func() {
+		testutils.StartOperatorWithFlags([]string{
+			"--leader-elect=false",
+			"--health-probe-bind-address=:8082",
+			"--metrics-enabled=false",
+		})
+	})
+
+	AfterAll(func() {
+		testutils.StopOperator()
 	})
 
 	BeforeEach(func(ctx SpecContext) {
