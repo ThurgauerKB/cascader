@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 )
 
 const RestartedAtKey string = "kubectl.kubernetes.io/restartedAt"
@@ -52,6 +53,23 @@ func FormatAnnotations(annotations map[string]string) string {
 	}
 	sort.Strings(annotationsList) // Ensure deterministic ordering
 	return strings.Join(annotationsList, ", ")
+}
+
+// ToCacheOptions returns cache.Options configured to watch the given namespaces.
+// If no namespaces are provided, it returns an empty Options which watches all namespaces.
+func ToCacheOptions(watchNamespaces []string) cache.Options {
+	if len(watchNamespaces) == 0 {
+		return cache.Options{}
+	}
+
+	nsMap := make(map[string]cache.Config, len(watchNamespaces))
+	for _, ns := range watchNamespaces {
+		nsMap[ns] = cache.Config{}
+	}
+
+	return cache.Options{
+		DefaultNamespaces: nsMap,
+	}
 }
 
 // ParseTargetRef splits a target reference (e.g. "namespace/name") into its namespace and name.

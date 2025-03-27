@@ -84,7 +84,7 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	})
 
 	// Configure metrics server
-	var metricsServerOptions metricsserver.Options
+	metricsServerOptions := metricsserver.Options{BindAddress: "0"} // disable listener per default
 	if cfg.EnableMetrics {
 		metricsServerOptions = metricsserver.Options{
 			BindAddress:   cfg.MetricsAddr,
@@ -96,6 +96,14 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 		}
 	}
 
+	// Create Cache Options
+	cacheOpts := utils.ToCacheOptions(cfg.WatchNamespaces)
+	if len(cfg.WatchNamespaces) == 0 {
+		setupLog.Info("watching all namespaces")
+	} else {
+		setupLog.Info("watching specific namespaces", "namespaces", cfg.WatchNamespaces)
+	}
+
 	// Create and initialize the manager
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -105,6 +113,7 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 		HealthProbeBindAddress: cfg.ProbeAddr,
 		LeaderElection:         cfg.LeaderElection,
 		LeaderElectionID:       "fc1fdccd.cascader.tkb.ch",
+		Cache:                  cacheOpts,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to start manager: %w", err)

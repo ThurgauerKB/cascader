@@ -18,10 +18,9 @@ package e2e
 
 import (
 	"context"
-	"io"
+	"os/exec"
 	"testing"
 
-	"github.com/thurgauerkb/cascader/internal/app"
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -36,14 +35,13 @@ import (
 )
 
 var (
-	testCfg      *rest.Config
-	testScheme   = runtime.NewScheme()
-	cancelMgrCtx context.CancelFunc
+	testCfg    *rest.Config
+	testScheme = runtime.NewScheme()
 )
 
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Workload E2E Test Suite")
+	RunSpecs(t, "Cascader E2E Suite")
 }
 
 var _ = BeforeSuite(func() {
@@ -57,20 +55,18 @@ var _ = BeforeSuite(func() {
 	Expect(appsv1.AddToScheme(testScheme)).To(Succeed())
 	Expect(corev1.AddToScheme(testScheme)).To(Succeed())
 
+	// Setup the test environment
 	testutils.K8sClient, err = client.New(testCfg, client.Options{Scheme: testScheme})
 	Expect(err).NotTo(HaveOccurred())
 
-	By("Starting the operator manager")
-	ctx, cancel := context.WithCancel(context.Background())
-	cancelMgrCtx = cancel
+	testutils.NSManager = testutils.NewNamespaceManager()
 
-	writer := io.MultiWriter(testutils.LogBuffer, GinkgoWriter)
-
-	args := []string{"--leader-elect=false", "--requeue-after-default=1s"}
-	go func() {
-		err := app.Run(ctx, "v0.0.0", args, writer)
-		Expect(err).NotTo(HaveOccurred())
-	}()
+	// Build the operator
+	cmd := exec.Command("go", "build", "-o", "../../bin/cascader", "../../cmd/")
+	cmd.Stdout = GinkgoWriter
+	cmd.Stderr = GinkgoWriter
+	err = cmd.Run()
+	Expect(err).ToNot(HaveOccurred(), "operator exited unexpectedly")
 })
 
 var _ = AfterSuite(func(ctx SpecContext) {
@@ -78,5 +74,5 @@ var _ = AfterSuite(func(ctx SpecContext) {
 	testutils.NSManager.Cleanup(context.Background())
 
 	By("Stopping operator manager")
-	cancelMgrCtx()
+	testutils.StopOperator()
 })
