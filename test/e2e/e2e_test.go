@@ -35,15 +35,27 @@ const (
 	daemonSetAnnotation         string = "cascader.tkb.ch/daemonset"
 )
 
-var _ = Describe("Workload E2E Tests", func() {
+var _ = Describe("Operator in default mode", Ordered, func() {
 	var ns string
+
+	BeforeAll(func() {
+		testutils.StartOperatorWithFlags([]string{
+			"--leader-elect=false",
+			"--health-probe-bind-address=:8082",
+			"--metrics-enabled=false",
+		})
+	})
+
+	AfterAll(func() {
+		testutils.StopOperator()
+	})
 
 	BeforeEach(func(ctx SpecContext) {
 		ns = testutils.NSManager.CreateNamespace(ctx)
 	})
 
 	AfterEach(func(ctx SpecContext) {
-		testutils.NSManager.DeleteNamespace(ctx, ns)
+		testutils.NSManager.Cleanup(ctx)
 	})
 
 	It("Ensure Operator is Running", func() {
@@ -838,5 +850,93 @@ var _ = Describe("Workload E2E Tests", func() {
 
 		By(fmt.Sprintf("validating cascader handles concurrent updates to %s", obj3ID))
 		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj3ID), 1*time.Minute, 2*time.Second)
+	})
+})
+
+var _ = Describe("Operator watching multiple namespaces", func() {
+	AfterEach(func(ctx SpecContext) {
+		testutils.NSManager.Cleanup(ctx)
+	})
+
+	It("Multiple mixed targets in different namespaces", func(ctx SpecContext) {
+		ns1 := testutils.NSManager.CreateNamespace(ctx)
+		ns2 := testutils.NSManager.CreateNamespace(ctx)
+		ns3 := testutils.NSManager.CreateNamespace(ctx)
+
+		testutils.StartOperatorWithFlags([]string{
+			"--leader-elect=false",
+			fmt.Sprintf("--watch-namespace=%s,%s,%s", ns1, ns2, ns3),
+			"--health-probe-bind-address=:8084",
+			"--metrics-enabled=false",
+		})
+
+		obj1Name := testutils.GenerateUniqueName("dep1")
+		obj2Name := testutils.GenerateUniqueName("sts2")
+		obj3Name := testutils.GenerateUniqueName("ds3")
+
+		obj1 := testutils.CreateDeployment(
+			ctx,
+			ns1,
+			obj1Name,
+			testutils.WithAnnotation(statefulSetAnnotation, fmt.Sprintf("%s/%s", ns2, obj2Name)),
+			testutils.WithAnnotation(daemonSetAnnotation, fmt.Sprintf("%s/%s", ns3, obj3Name)),
+		)
+
+		obj2 := testutils.CreateStatefulSet(
+			ctx,
+			ns2,
+			obj2Name,
+		)
+		obj2ID := testutils.GenerateID(obj2)
+
+		obj3 := testutils.CreateDaemonSet(
+			ctx,
+			ns3,
+			obj3Name,
+		)
+		obj3ID := testutils.GenerateID(obj3)
+
+		testutils.RestartResource(ctx, obj1)
+
+		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+
+		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj3ID))
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj3ID), 1*time.Minute, 2*time.Second)
+	})
+
+	It("ignores targets outside of watched namespaces", func(ctx SpecContext) {
+		ns1 := testutils.NSManager.CreateNamespace(ctx)
+		ns2 := testutils.NSManager.CreateNamespace(ctx)
+		nsIgnored := testutils.NSManager.CreateNamespace(ctx)
+
+		testutils.StartOperatorWithFlags([]string{
+			"--leader-elect=false",
+			fmt.Sprintf("--watch-namespace=%s,%s", ns1, ns2), // note: nsIgnored is excluded
+			"--health-probe-bind-address=:8085",
+			"--metrics-enabled=false",
+		})
+
+		obj1Name := testutils.GenerateUniqueName("dep1")
+		obj2Name := testutils.GenerateUniqueName("sts-ignored")
+
+		obj1 := testutils.CreateDeployment(
+			ctx,
+			ns1,
+			obj1Name,
+			testutils.WithAnnotation(statefulSetAnnotation, fmt.Sprintf("%s/%s", nsIgnored, obj2Name)),
+		)
+
+		obj2 := testutils.CreateStatefulSet(
+			ctx,
+			nsIgnored,
+			obj2Name,
+		)
+		obj2ID := testutils.GenerateID(obj2)
+
+		testutils.RestartResource(ctx, obj1)
+
+		By("Validating fetching resource error")
+		testutils.ContainsLogs(fmt.Sprintf("dependency cycle detected: dependency cycle check failed: failed to fetch resource %s: unable to get: %s/%s because of unknown namespace for the cache", obj2ID, nsIgnored, obj2Name), 10*time.Second, 1*time.Second)
 	})
 })

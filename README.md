@@ -29,6 +29,7 @@ This reduces manual intervention, ensures consistency, and keeps your cluster in
 - **Dependent Restarts**: Triggers restarts of dependent kubernetes workloads.
 - **Customizable Intervals**: Configure requeue intervals unitl workload is stable, per workload or globally.
 - **Cycle Detection**: Avoid cyclic dependencies in your workload graph.
+- **Scoped Namespace Watching**: Limit `Cascader` to specific namespaces with the `--watch-namespace` flag.
 - **Prometheus Metrics**: Gain insights into dependency cycles, workloads managed, and restarts performed.
 
 > Note: `Cascader` follows a best-effort restart approach. It updates the `kubectl.kubernetes.io/restartedAt` annotation to trigger dependent workload reloads but does not verify if the restart was successful. For reliability checks, use an external monitoring tool like Prometheus.
@@ -44,6 +45,12 @@ kubectl apply -f https://raw.githubusercontent.com/thurgauerkb/cascader/main/dep
 ```
 
 This will deploy `Cascader` in the `cascader-system` namespace.
+
+### Namespaced Mode
+
+By default, `Cascader` watches all namespaces. To restrict it to specific namespaces, pass the `--watch-namespace` flag. This flag can be repeated or comma-separated to specify multiple namespaces. When set, `Cascader` will only monitor workloads and trigger dependent restarts within those namespaces.
+
+If running in namespaced mode, ensure the associated `Role` and `RoleBinding` are configured accordingly. You can use `deploy/manifests/role.template` and `deploy/manifests/rolebinding.template` as starting points for custom RBAC definitions.
 
 ### Kustomize
 
@@ -178,24 +185,25 @@ If you do not want to use the default annotations, you can customize them by pas
 
 ### Start Parameters
 
-| Parameter                            | Description                                                        | Default                         |
-| :----------------------------------- | :----------------------------------------------------------------- | :------------------------------ |
-| `--deployment-annotation` string     | Annotation key for monitored Deployments                           | `cascader.tkb.ch/deployment`    |
-| `--statefulset-annotation` string    | Annotation key for monitored StatefulSets                          | `cascader.tkb.ch/statefulset`   |
-| `--daemonset-annotation` string      | Annotation key for monitored DaemonSets                            | `cascader.tkb.ch/daemonset`     |
-| `--requeue-after-annotation` string  | Annotation key for requeue interval override                       | `cascader.tkb.ch/requeue-after` |
-| `--requeue-after-default` duration   | Default requeue interval                                           | `5s`                            |
-| `--metrics-enabled`                  | Enable or disable the metrics endpoint                             | `true`                          |
-| `--metrics-bind-address` string      | Metrics server address (e.g., `:8080` for HTTP, `:8443` for HTTPS) | `:8443`                         |
-| `--metrics-secure`                   | Serve metrics over HTTPS                                           | `true`                          |
-| `--enable-http2`                     | Enable HTTP/2 for servers                                          | `false`                         |
-| `--health-probe-bind-address` string | Health and readiness probe address                                 | `:8081`                         |
-| `--leader-elect`                     | Enable leader election                                             | `true`                          |
-| `--log-encoder` string               | Log format (`json`, `console`)                                     | `json`                          |
-| `--log-stacktrace-level` string      | Stacktrace log level (`info`, `error`, `panic`)                    | `panic`                         |
-| `--log-devel`                        | Enable development mode logging                                    | `false`                         |
-| `--version`                          | Show version and exit                                              |
-| `-h`, `--help`                       | Show help and exit                                                 |
+| Parameter                            | Description                                                                     | Default                         |
+| :----------------------------------- | :------------------------------------------------------------------------------ | :------------------------------ |
+| `--deployment-annotation` string     | Annotation key for monitored Deployments                                        | `cascader.tkb.ch/deployment`    |
+| `--statefulset-annotation` string    | Annotation key for monitored StatefulSets                                       | `cascader.tkb.ch/statefulset`   |
+| `--daemonset-annotation` string      | Annotation key for monitored DaemonSets                                         | `cascader.tkb.ch/daemonset`     |
+| `--requeue-after-annotation` string  | Annotation key for requeue interval override                                    | `cascader.tkb.ch/requeue-after` |
+| `--requeue-after-default` duration   | Default requeue interval                                                        | `5s`                            |
+| `--watch-namespace` stringSlice      | Namespaces to watch (can be repeated or comma-separated). Watches all if unset. | ``                              |
+| `--metrics-enabled`                  | Enable or disable the metrics endpoint                                          | `true`                          |
+| `--metrics-bind-address` string      | Metrics server address (e.g., `:8080` for HTTP, `:8443` for HTTPS)              | `:8443`                         |
+| `--metrics-secure`                   | Serve metrics over HTTPS                                                        | `true`                          |
+| `--enable-http2`                     | Enable HTTP/2 for servers                                                       | `false`                         |
+| `--health-probe-bind-address` string | Health and readiness probe address                                              | `:8081`                         |
+| `--leader-elect`                     | Enable leader election                                                          | `true`                          |
+| `--log-encoder` string               | Log format (`json`, `console`)                                                  | `json`                          |
+| `--log-stacktrace-level` string      | Stacktrace log level (`info`, `error`, `panic`)                                 | `panic`                         |
+| `--log-devel`                        | Enable development mode logging                                                 | `false`                         |
+| `--version`                          | Show version and exit                                                           |
+| `-h`, `--help`                       | Show help and exit                                                              |
 
 ## Prometheus Metrics
 

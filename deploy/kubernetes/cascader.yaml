@@ -1,28 +1,29 @@
+---
 apiVersion: v1
 kind: Namespace
 metadata:
+  name: cascader-system
   labels:
     app.kubernetes.io/component: controller
     app.kubernetes.io/name: cascader
-  name: cascader-system
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  name: cascader
+  namespace: cascader-system
   labels:
     app.kubernetes.io/component: controller
     app.kubernetes.io/name: cascader
-  name: cascader
-  namespace: cascader-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
+  name: cascader-leader-election
+  namespace: cascader-system
   labels:
     app.kubernetes.io/component: controller
     app.kubernetes.io/name: cascader
-  name: cascader-leader-election-role
-  namespace: cascader-system
 rules:
   - apiGroups:
       - coordination.k8s.io
@@ -40,7 +41,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: cascader-manager-role
+  name: cascader-manager
 rules:
   - apiGroups:
       - ""
@@ -48,6 +49,8 @@ rules:
       - events
     verbs:
       - create
+      - patch
+      - update
   - apiGroups:
       - apps
     resources:
@@ -79,7 +82,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: cascader-metrics-auth-role
+  name: cascader-metrics-auth
 rules:
   - apiGroups:
       - authentication.k8s.io
@@ -97,15 +100,15 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
+  name: cascader-leader-election
+  namespace: cascader-system
   labels:
     app.kubernetes.io/component: controller
     app.kubernetes.io/name: cascader
-  name: cascader-leader-election-rolebinding
-  namespace: cascader-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: cascader-leader-election-role
+  name: cascader-leader-election
 subjects:
   - kind: ServiceAccount
     name: cascader
@@ -114,14 +117,14 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
+  name: cascader-manager
   labels:
     app.kubernetes.io/component: controller
     app.kubernetes.io/name: cascader
-  name: cascader
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: cascader
+  name: cascader-manager
 subjects:
   - kind: ServiceAccount
     name: cascader
@@ -130,11 +133,11 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: cascader-metrics-auth-rolebinding
+  name: cascader-metrics-auth
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: cascader-metrics-auth-role
+  name: cascader-metrics-auth
 subjects:
   - kind: ServiceAccount
     name: cascader
@@ -143,11 +146,11 @@ subjects:
 apiVersion: v1
 kind: Service
 metadata:
+  name: cascader-metrics
+  namespace: cascader-system
   labels:
     app.kubernetes.io/component: controller
     app.kubernetes.io/name: cascader
-  name: cascader-metrics
-  namespace: cascader-system
 spec:
   ports:
     - name: https
@@ -182,7 +185,7 @@ spec:
     spec:
       containers:
         - name: cascader
-          image: ghcr.io/thurgauerkb/cascader:v0.0.1
+          image: ghcr.io/thurgauerkb/cascader:v0.1.0
           ports:
             - name: metrics
               containerPort: 8443
@@ -230,18 +233,26 @@ spec:
       rules:
         - alert: CascaderCycleDetected
           annotations:
-            description:
-              "A dependency cycle has been detected in the Cascader controller.
-              Namespace: {{ $labels.namespace }}, Name: {{ $labels.name }}, Resource Kind:
-              {{ $labels.resource_kind }}. Please check the corresponding Kubernetes Event
-              for detailed cycle path information."
-            summary:
-              Dependency Cycle Detected in ({{ $labels.namespace }}/{{ $labels.name
-              }})
+            description: |
+              A dependency cycle has been detected in the Cascader controller.
+              Namespace: {{ $labels.namespace }}, Name: {{ $labels.name }}, Resource Kind: {{ $labels.resource_kind }}.
+              Please check the corresponding Kubernetes Event for detailed cycle path information.
+            summary: Dependency Cycle Detected in {{ $labels.namespace }}/{{ $labels.name }}
           expr: cascader_dependency_cycles_detected > 0
           for: 1m
           labels:
             severity: critical
+
+        - alert: CascaderHighRestartRate
+          annotations:
+            description: |
+              Cascader has triggered more than 5 restarts for workload {{ $labels.namespace }}/{{ $labels.name }} (kind: {{ $labels.resource_kind }}) in the last 5 minutes.
+              This may indicate a misconfiguration or unstable rollout.
+            summary: High restart rate detected for {{ $labels.namespace }}/{{ $labels.name }}
+          expr: increase(cascader_restarts_performed_total[5m]) > 5
+          for: 2m
+          labels:
+            severity: warning
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor

@@ -18,6 +18,7 @@ package config
 
 import (
 	"errors"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -152,6 +153,43 @@ func TestParseArgs(t *testing.T) {
 		assert.IsType(t, &HelpError{}, err)
 		assert.Error(t, err)
 		assert.EqualError(t, err, "Cascader version 0.0.0")
+	})
+
+	t.Run("Multiple namespaces", func(t *testing.T) {
+		t.Parallel()
+
+		args := []string{"--watch-namespace", "ns1", "--watch-namespace", "ns2"}
+		cfg, err := ParseArgs(args, io.Discard, "0.0.0")
+
+		assert.NoError(t, err)
+		assert.Len(t, cfg.WatchNamespaces, 2)
+		assert.Equal(t, "ns1", cfg.WatchNamespaces[0])
+		assert.Equal(t, "ns2", cfg.WatchNamespaces[1])
+	})
+
+	t.Run("Multiple namespaces, comma separated", func(t *testing.T) {
+		t.Parallel()
+
+		args := []string{"--watch-namespace", "ns1,ns2"}
+		cfg, err := ParseArgs(args, io.Discard, "0.0.0")
+
+		assert.NoError(t, err)
+		assert.Len(t, cfg.WatchNamespaces, 2)
+		assert.Equal(t, "ns1", cfg.WatchNamespaces[0])
+		assert.Equal(t, "ns2", cfg.WatchNamespaces[1])
+	})
+
+	t.Run("Multiple namespaces, mixed", func(t *testing.T) {
+		t.Parallel()
+
+		args := []string{"--watch-namespace", "ns1", "--watch-namespace", "ns2,ns3"}
+		cfg, err := ParseArgs(args, io.Discard, "0.0.0")
+
+		assert.NoError(t, err)
+		assert.Len(t, cfg.WatchNamespaces, 3)
+		assert.Equal(t, "ns1", cfg.WatchNamespaces[0])
+		assert.Equal(t, "ns2", cfg.WatchNamespaces[1])
+		assert.Equal(t, "ns3", cfg.WatchNamespaces[2])
 	})
 }
 

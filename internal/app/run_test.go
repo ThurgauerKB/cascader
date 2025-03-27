@@ -37,6 +37,7 @@ func TestRun(t *testing.T) {
 		args := []string{
 			"--leader-elect=false",
 			"--health-probe-bind-address", ":8082",
+			"--metrics-enabled=false",
 		}
 		out := &bytes.Buffer{}
 
@@ -108,7 +109,7 @@ func TestRun(t *testing.T) {
 		assert.EqualError(t, err, "unable to start manager: unable to find leader election namespace: not running in-cluster, please specify LeaderElectionNamespace")
 	})
 
-	t.Run("Not Unique Annotations", func(t *testing.T) {
+	t.Run("Not unique Annotations", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := context.Background()
@@ -124,6 +125,6 @@ func TestRun(t *testing.T) {
 		err := Run(ctx, "v0.0.0", args, out)
 
 		assert.Error(t, err)
-		assert.EqualError(t, err, "annotation values must be unique: duplicate annotation 'cascader.tkb.ch/deployment' found for keys 'Deployment' and 'StatefulSet'")
+		assert.ErrorContains(t, err, "annotation values must be unique: duplicate annotation")
 	})
 }

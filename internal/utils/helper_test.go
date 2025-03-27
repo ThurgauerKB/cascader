@@ -115,6 +115,38 @@ func TestFormatAnnotations(t *testing.T) {
 	})
 }
 
+func TestToCacheOptions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Empty namespace list returns empty cache options", func(t *testing.T) {
+		t.Parallel()
+
+		opts := ToCacheOptions(nil)
+		assert.Nil(t, opts.DefaultNamespaces)
+	})
+
+	t.Run("Single namespace", func(t *testing.T) {
+		t.Parallel()
+
+		opts := ToCacheOptions([]string{"ns1"})
+		assert.Len(t, opts.DefaultNamespaces, 1)
+		_, exists := opts.DefaultNamespaces["ns1"]
+		assert.True(t, exists)
+	})
+
+	t.Run("Multiple namespaces", func(t *testing.T) {
+		t.Parallel()
+
+		namespaces := []string{"ns1", "ns2", "ns3"}
+		opts := ToCacheOptions(namespaces)
+		assert.Len(t, opts.DefaultNamespaces, 3)
+		for _, ns := range namespaces {
+			_, exists := opts.DefaultNamespaces[ns]
+			assert.True(t, exists, "expected namespace %q to exist in DefaultNamespaces", ns)
+		}
+	})
+}
+
 func TestParseTargetRef(t *testing.T) {
 	t.Parallel()
 

@@ -1,16 +1,18 @@
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
   name: cascader-manager
+  namespace: DESTINATION_NAMESPACE
   labels:
     app.kubernetes.io/name: cascader
     app.kubernetes.io/component: controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
+  kind: Role
   name: cascader-manager
 subjects:
   - kind: ServiceAccount
     name: cascader
     namespace: cascader-system
+# vi: ft=yaml

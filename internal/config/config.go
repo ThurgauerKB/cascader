@@ -50,6 +50,7 @@ func (e *HelpError) Is(target error) bool {
 
 // Config holds all configuration options for the application.
 type Config struct {
+	WatchNamespaces        []string      // Namespaces to watch
 	MetricsAddr            string        // Address for the metrics server
 	LeaderElection         bool          // Enable leader election
 	ProbeAddr              string        // Address for health and readiness probes
@@ -79,6 +80,8 @@ func ParseArgs(args []string, out io.Writer, version string) (Config, error) {
 	fs.StringVar(&cfg.DaemonSetAnnotation, "daemonset-annotation", daemonSetAnnotation, "Annotation key for monitored DaemonSets")
 	fs.StringVar(&cfg.RequeueAfterAnnotation, "requeue-after-annotation", requeueAfterAnnotation, "Annotation key for requeue interval override")
 	fs.DurationVar(&cfg.RequeueAfterDefault, "requeue-after-default", 5*time.Second, "Default requeue interval")
+
+	fs.StringSliceVar(&cfg.WatchNamespaces, "watch-namespace", nil, "Namespaces to watch (can be repeated or comma-separated). Watches all if unset.")
 
 	fs.BoolVar(&cfg.EnableMetrics, "metrics-enabled", true, "Enable or disable the metrics endpoint")
 	fs.StringVar(&cfg.MetricsAddr, "metrics-bind-address", ":8443", "Metrics server address (e.g., :8080 for HTTP, :8443 for HTTPS)")

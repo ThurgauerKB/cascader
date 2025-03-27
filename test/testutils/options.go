@@ -35,6 +35,7 @@ func applyOptions(resource client.Object, opts ...Option) {
 	}
 }
 
+// WithAnnotation sets a annotation for a resource.
 func WithAnnotation(key, value string) Option {
 	return func(resource client.Object) {
 		annotations := resource.GetAnnotations()
@@ -46,6 +47,7 @@ func WithAnnotation(key, value string) Option {
 	}
 }
 
+// WithReplicas sets the replicas for a resource.
 func WithReplicas(replicas int32) Option {
 	return func(resource client.Object) {
 		switch obj := resource.(type) {
