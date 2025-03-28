@@ -103,14 +103,15 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 
 	// Create and initialize the manager
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		Metrics:                metricsServerOptions,
-		Logger:                 logger,
-		WebhookServer:          webhookServer,
-		HealthProbeBindAddress: cfg.ProbeAddr,
-		LeaderElection:         cfg.LeaderElection,
-		LeaderElectionID:       "fc1fdccd.cascader.tkb.ch",
-		Cache:                  cacheOpts,
+		Scheme:                        scheme,
+		Metrics:                       metricsServerOptions,
+		Logger:                        logger,
+		WebhookServer:                 webhookServer,
+		HealthProbeBindAddress:        cfg.ProbeAddr,
+		LeaderElection:                cfg.LeaderElection,
+		LeaderElectionID:              "fc1fdccd.cascader.tkb.ch",
+		LeaderElectionReleaseOnCancel: true,
+		Cache:                         cacheOpts,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to create manager: %w", err)
