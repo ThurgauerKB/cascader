@@ -106,7 +106,7 @@ func TestRun(t *testing.T) {
 		err := Run(ctx, "v0.0.0", args, out)
 
 		assert.Error(t, err)
-		assert.EqualError(t, err, "unable to start manager: unable to find leader election namespace: not running in-cluster, please specify LeaderElectionNamespace")
+		assert.EqualError(t, err, "unable to create manager: unable to find leader election namespace: not running in-cluster, please specify LeaderElectionNamespace")
 	})
 
 	t.Run("Not unique Annotations", func(t *testing.T) {

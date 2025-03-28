@@ -69,6 +69,8 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	klog.SetLogger(logger) // Redirect klog to use zap
 	setupLog := ctrl.Log.WithName("setup")
 
+	setupLog.Info("initializing cascader", "version", version)
+
 	// Configure HTTP/2 settings
 	tlsOpts := []func(*tls.Config){}
 	if !cfg.EnableHTTP2 {
@@ -98,11 +100,6 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 
 	// Create Cache Options
 	cacheOpts := utils.ToCacheOptions(cfg.WatchNamespaces)
-	if len(cfg.WatchNamespaces) == 0 {
-		setupLog.Info("watching all namespaces")
-	} else {
-		setupLog.Info("watching specific namespaces", "namespaces", cfg.WatchNamespaces)
-	}
 
 	// Create and initialize the manager
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -116,9 +113,15 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 		Cache:                  cacheOpts,
 	})
 	if err != nil {
-		return fmt.Errorf("unable to start manager: %w", err)
+		return fmt.Errorf("unable to create manager: %w", err)
 	}
 
+	// Log watching namespaces
+	if len(cfg.WatchNamespaces) == 0 {
+		setupLog.Info("namespace scope", "mode", "cluster-wide")
+	} else {
+		setupLog.Info("namespace scope", "mode", "namespaced", "namespaces", cfg.WatchNamespaces)
+	}
 	// Validate annotation uniqueness
 	configuredAnnotations := map[string]string{
 		"Deployment":   cfg.DeploymentAnnotation,
@@ -131,8 +134,7 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	}
 
 	// Log configured annotations
-	setupLog.Info("starting cascader", "version", version)
-	setupLog.Info("configured annotations", "annotations", utils.FormatAnnotations(configuredAnnotations))
+	setupLog.Info("configured annotations", "values", utils.FormatAnnotations(configuredAnnotations))
 
 	// Define resource annotations with their kinds
 	annotationKindMap := kinds.AnnotationKindMap{
@@ -192,6 +194,7 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	}
 
 	// Start the manager
+	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
 		return fmt.Errorf("manager encountered an error while running: %w", err)
 	}
