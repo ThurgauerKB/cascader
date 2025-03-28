@@ -856,6 +856,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 var _ = Describe("Operator watching multiple namespaces", func() {
 	AfterEach(func(ctx SpecContext) {
 		testutils.NSManager.Cleanup(ctx)
+		testutils.StopOperator()
 	})
 
 	It("Multiple mixed targets in different namespaces", func(ctx SpecContext) {
