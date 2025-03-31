@@ -333,7 +333,7 @@ func TestHashTemplate(t *testing.T) {
 		t.Parallel()
 
 		template := corev1.PodTemplateSpec{}
-		template.ObjectMeta.Annotations = nil // Ensure no annotations
+		template.Annotations = nil // Ensure no annotations
 
 		hash, err := hashTemplate(template)
 		assert.NoError(t, err, "Expected no error for valid PodTemplateSpec without annotations")

@@ -36,7 +36,7 @@ GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-runtime
 ENVTEST_VERSION ?= release-0.18
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION ?= v1.64.8
+GOLANGCI_LINT_VERSION ?= v2.0.2
 # renovate: datasource=github-releases depName=google/yamlfmt
 YAMLFMT_VERSION ?= v0.16.0
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind
@@ -192,7 +192,7 @@ $(ENVTEST): $(LOCALBIN)
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
-	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
+	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
 
 .PHONY: yamlfmt
 yamlfmt: $(LOCALBIN)/yamlfmt ## Download yamlfmt locally if necessary.
