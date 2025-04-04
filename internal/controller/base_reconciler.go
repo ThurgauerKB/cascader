@@ -163,21 +163,35 @@ func (b *BaseReconciler) getRequeueDuration(obj client.Object) (time.Duration, e
 // triggerReloads attempts to trigger reload for each target, returning success and failure counts.
 func (b *BaseReconciler) triggerReloads(ctx context.Context, workload workloads.Workload, targets []targets.Target) (succ, fail int) {
 	res := workload.Resource()
+	sourceID := workload.ID()
 
 	for _, t := range targets {
-		id := t.ID()
+		targetID := t.ID()
 		kind := t.Kind().String()
 
 		if err := t.Trigger(ctx); err != nil {
-			b.Logger.Error(err, "Failed to trigger reload", "targetID", id)
-			b.Recorder.Eventf(res, corev1.EventTypeWarning, "ReloadFailed", "Failed to trigger reload of target %q: %v", id, err)
+			b.Logger.Error(err, "Failed to trigger reload", "targetID", targetID)
+			b.Recorder.Eventf(
+				res,
+				corev1.EventTypeWarning,
+				"ReloadFailed",
+				"Cascader failed to trigger reload of %q due to change in %q: %v",
+				targetID, sourceID, err,
+			)
+
 			fail++
 			continue
 		}
 
 		metrics.RestartsPerformed.WithLabelValues(kind, t.Namespace(), t.Name()).Inc()
-		b.Logger.Info("Successfully triggered reload", "targetID", id)
-		b.Recorder.Eventf(res, corev1.EventTypeNormal, "ReloadSuccessful", "Triggered reload of target %q", id)
+		b.Logger.Info("Successfully triggered reload", "targetID", targetID)
+		b.Recorder.Eventf(
+			res,
+			corev1.EventTypeNormal,
+			"ReloadSucceeded",
+			"Cascader triggered reload of %q due to change in %q",
+			targetID, sourceID,
+		)
 		succ++
 	}
 
