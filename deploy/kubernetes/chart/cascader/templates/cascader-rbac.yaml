@@ -1,4 +1,5 @@
 {{- if .Values.clusterRole.create }}
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -17,30 +18,14 @@ rules:
   - apiGroups:
     - apps
     resources:
-    - daemonsets
+      - daemonsets
+      - deployments
+      - statefulsets
     verbs:
-    - get
-    - list
-    - patch
-    - watch
-  - apiGroups:
-    - apps
-    resources:
-    - deployments
-    verbs:
-    - get
-    - list
-    - patch
-    - watch
-  - apiGroups:
-    - apps
-    resources:
-    - statefulsets
-    verbs:
-    - get
-    - list
-    - patch
-    - watch
+      - get
+      - list
+      - patch
+      - watch
   {{ if .Values.clusterRole.extraRules }}
   {{- toYaml .Values.clusterRole.extraRules }}
   {{- end }}
