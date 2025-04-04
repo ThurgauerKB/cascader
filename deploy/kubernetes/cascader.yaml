@@ -153,10 +153,10 @@ metadata:
     app.kubernetes.io/name: cascader
 spec:
   ports:
-    - name: https
+    - name: metrics
       port: 8443
       protocol: TCP
-      targetPort: 8443
+      targetPort: metrics
   selector:
     app.kubernetes.io/component: controller
     app.kubernetes.io/name: cascader
@@ -196,13 +196,13 @@ spec:
           livenessProbe:
             httpGet:
               path: /healthz
-              port: 8081
+              port: probes
             initialDelaySeconds: 15
             periodSeconds: 20
           readinessProbe:
             httpGet:
               path: /readyz
-              port: 8081
+              port: probes
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:
@@ -266,7 +266,7 @@ spec:
   endpoints:
     - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
       path: /metrics
-      port: https
+      port: metrics
       scheme: https
       tlsConfig:
         insecureSkipVerify: true
