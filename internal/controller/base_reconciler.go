@@ -178,8 +178,8 @@ func (b *BaseReconciler) triggerReloads(ctx context.Context, workload workloads.
 				"Cascader failed to trigger reload of %q due to change in %q: %v",
 				targetID, sourceID, err,
 			)
-
 			fail++
+
 			continue
 		}
 
