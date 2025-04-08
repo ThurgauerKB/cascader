@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -33,9 +34,11 @@ spec:
               value: {{ .value | quote }}
             {{- end }}
           ports:
+            {{- if .Values.metrics.enabled }}
             - name: metrics
               containerPort: 8443
               protocol: TCP
+            {{- end }}
             - name: probes
               containerPort: 8081
               protocol: TCP
