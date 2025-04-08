@@ -25,23 +25,16 @@ spec:
       containers:
         - name: cascader
           image: ghcr.io/thurgauerkb/cascader:v0.1.2
-          ports:
-            - name: metrics
-              containerPort: 8443
-              protocol: TCP
-            - name: probes
-              containerPort: 8081
-              protocol: TCP
           livenessProbe:
             httpGet:
               path: /healthz
-              port: probes
+              port: 8081
             initialDelaySeconds: 15
             periodSeconds: 20
           readinessProbe:
             httpGet:
               path: /readyz
-              port: probes
+              port: 8081
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:

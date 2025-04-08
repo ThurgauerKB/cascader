@@ -1,5 +1,4 @@
 {{- if .Values.metrics.prometheusRule.enabled }}
----
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:

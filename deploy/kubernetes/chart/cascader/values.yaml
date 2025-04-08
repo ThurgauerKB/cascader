@@ -155,8 +155,12 @@ serviceAccount:
 extraObjects: []
 
 # Enable leader election for the operator
+# Useful for high-availability setups
 leaderElection:
   enabled: true
+  leaseDuration: 15s
+  renewDeadline: 10s
+  retryPeriod: 2s
 
 # Custom logging configuration
 logging:

@@ -119,9 +119,12 @@ helm repo add tkb https://charts.tkb.ch
 
 ## Leader Election
 
-| Key                      | Description             | Default Value |
-| ------------------------ | ----------------------- | ------------- |
-| `leaderElection.enabled` | Enable leader election. | `true`        |
+| Key                            | Description                         | Default Value |
+| ------------------------------ | ----------------------------------- | ------------- |
+| `leaderElection.enabled`       | Enable leader election.             | `true`        |
+| `leaderElection.leaseDuration` | Duration for lease.                 | `15s`         |
+| `leaderElection.renewDeadline` | Renew deadline for leader election. | `10s`         |
+| `leaderElection.retryPeriod`   | Retry period for leader election.   | `2s`          |
 
 ---
 
