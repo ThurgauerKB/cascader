@@ -76,9 +76,10 @@ func ContainsLogs(expectedLog string, timeout, interval time.Duration) {
 	}, timeout, interval).Should(BeTrue(), fmt.Sprintf("Expected log not found: %s", expectedLog))
 }
 
-// ContainsNotLogs checks if the expected log is NOT present in the log buffer.
+// ContainsNotLogs checks that the expected log is NOT present in the log buffer
+// for the entire duration of the timeout, checking every interval.
 func ContainsNotLogs(expectedLog string, timeout, interval time.Duration) {
-	Eventually(func() bool {
+	Consistently(func() bool {
 		return strings.Contains(LogBuffer.String(), expectedLog)
 	}, timeout, interval).Should(BeFalse(), fmt.Sprintf("Expected log should not be found: %s", expectedLog))
 }
