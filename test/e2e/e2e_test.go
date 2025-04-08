@@ -73,6 +73,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			obj1Name,
 			testutils.WithAnnotation(deploymentAnnotation, obj2Name),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateDeployment(
 			ctx,
@@ -84,7 +85,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.RestartResource(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("Deployment: Rolling update targets target restart after last replica", func(ctx SpecContext) {
@@ -118,7 +119,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.ContainsLogs(fmt.Sprintf("workload is stable: ready=%d, desired=%d", ready, desiredReplicas), 1*time.Minute, 2*time.Second)
 
 		By(fmt.Sprintf("Validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("Deployment: Delete single Pod in same namespace", func(ctx SpecContext) {
@@ -144,7 +145,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		Expect(testutils.DeleteResourcePods(ctx, obj1)).ToNot(HaveOccurred(), "error deleting pods")
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("Deployment: Single target with Recreate strategy", func(ctx SpecContext) {
@@ -159,6 +160,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			testutils.WithAnnotation(deploymentAnnotation, obj2Name),
 			testutils.WithStrategy(appsv1.RecreateDeploymentStrategyType),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateDeployment(
 			ctx,
@@ -170,7 +172,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.RestartResource(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("Deployment: Multiple targets in same namespace", func(ctx SpecContext) {
@@ -184,6 +186,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			obj1Name,
 			testutils.WithAnnotation(deploymentAnnotation, fmt.Sprintf("%s,%s", obj2Name, obj3Name)),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateDeployment(
 			ctx,
@@ -204,10 +207,10 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.RestartResource(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj3ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj3ID), 1*time.Minute, 2*time.Second)
 	})
 
 	// StatefulSet-specific tests
@@ -221,6 +224,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			obj1Name,
 			testutils.WithAnnotation(statefulSetAnnotation, obj2Name),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateStatefulSet(
 			ctx,
@@ -232,7 +236,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.RestartResource(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("StatefulSet: Delete single Pod in same namespace", func(ctx SpecContext) {
@@ -259,7 +263,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		Expect(testutils.DeleteResourcePods(ctx, obj1)).ToNot(HaveOccurred(), "error deleting pods")
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("StatefulSet: Multiple targets in different namespaces", func(ctx SpecContext) {
@@ -277,6 +281,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			testutils.WithReplicas(3),
 			testutils.WithAnnotation(statefulSetAnnotation, fmt.Sprintf("%s/%s,%s/%s", ns2, obj2Name, ns3, obj3Name)),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateStatefulSet(
 			ctx,
@@ -297,10 +302,10 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.RestartResource(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 2*time.Minute, 2*time.Second)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj3ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj3ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj3ID), 2*time.Minute, 2*time.Second)
 	})
 
 	// DaemonSet-specific tests
@@ -314,6 +319,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			obj1Name,
 			testutils.WithAnnotation(daemonSetAnnotation, obj2Name),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateDaemonSet(
 			ctx,
@@ -325,7 +331,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.RestartResource(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("DaemonSet: Mixed strategies in different namespaces", func(ctx SpecContext) {
@@ -338,6 +344,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			obj1Name,
 			testutils.WithAnnotation(daemonSetAnnotation, obj2Name),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateDaemonSet(
 			ctx,
@@ -351,7 +358,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.RestartResource(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 	})
 
 	// Mixed workload tests
@@ -366,6 +373,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			obj1Name,
 			testutils.WithAnnotation(statefulSetAnnotation, obj2Name),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateStatefulSet(
 			ctx,
@@ -387,10 +395,10 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.RestartResource(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj3ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj3ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID, obj3ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("Mixed: Deployment -> StatefulSet -> DaemonSet", func(ctx SpecContext) {
@@ -406,6 +414,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			testutils.WithAnnotation(statefulSetAnnotation, obj2Name),
 			testutils.WithStartupProbe(2),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateStatefulSet(
 			ctx,
@@ -425,10 +434,10 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.RestartResource(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj3ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj3ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID, obj3ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("Mixed: Cross-namespace chain", func(ctx SpecContext) {
@@ -448,6 +457,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			testutils.WithAnnotation(statefulSetAnnotation, fmt.Sprintf("%s/%s", ns2, obj2Name)),
 			testutils.WithStartupProbe(2),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateStatefulSet(
 			ctx,
@@ -469,10 +479,10 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.RestartResource(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj3ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj3ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID, obj3ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("Mixed: Direct cycle detection (Deployment -> Deployment)", func(ctx SpecContext) {
@@ -559,7 +569,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.ContainsLogs(fmt.Sprintf("workload is stable: ready=%d, desired=%d", ready, desired), 1*time.Minute, 2*time.Second)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("Deployment: Scale-up does not trigger target restart", func(ctx SpecContext) {
@@ -590,7 +600,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.CheckResourceReadiness(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsNotLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsNotLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 30*time.Second, 2*time.Second)
 	})
 
 	It("StatefulSet: Scale-down to 0 triggers target restart", func(ctx SpecContext) {
@@ -619,7 +629,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		Expect(testutils.ScaleResource(ctx, obj1, newReplicas)).To(Succeed())
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("Deployment: Scale-up from Zero targets target restart", func(ctx SpecContext) {
@@ -650,7 +660,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.CheckResourceReadiness(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("StatefulSet: Scale-up from Zero targets target restart ", func(ctx SpecContext) {
@@ -678,7 +688,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		Expect(testutils.ScaleResource(ctx, obj1, newReplicas)).To(Succeed())
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("Multiple mixed targets in different namespaces", func(ctx SpecContext) {
@@ -696,6 +706,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			testutils.WithAnnotation(statefulSetAnnotation, fmt.Sprintf("%s/%s", ns2, obj2Name)),
 			testutils.WithAnnotation(daemonSetAnnotation, fmt.Sprintf("%s/%s", ns3, obj3Name)),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateStatefulSet(
 			ctx,
@@ -714,10 +725,10 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.RestartResource(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj3ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj3ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj3ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("Invalid annotations", func(ctx SpecContext) {
@@ -749,6 +760,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			obj1Name,
 			testutils.WithAnnotation(deploymentAnnotation, obj3Name),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateDeployment(
 			ctx,
@@ -768,7 +780,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.RestartResource(ctx, obj2)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s only once", obj3ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj3ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj3ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("Long dependency chains", func(ctx SpecContext) {
@@ -783,6 +795,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			obj1Name,
 			testutils.WithAnnotation(deploymentAnnotation, obj2Name),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateDeployment(
 			ctx,
@@ -805,18 +818,18 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			ns,
 			dep4Name,
 		)
-		dep4ID := testutils.GenerateID(dep4)
+		obj4ID := testutils.GenerateID(dep4)
 
 		testutils.RestartResource(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj3ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj3ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID, obj3ID), 1*time.Minute, 2*time.Second)
 
-		By(fmt.Sprintf("validating cascader fetches the restart of %s", dep4ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, dep4ID), 1*time.Minute, 2*time.Second)
+		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj4ID))
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj3ID, obj4ID), 1*time.Minute, 2*time.Second)
 	})
 
 	It("Concurrent updates", func(ctx SpecContext) {
@@ -830,6 +843,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			obj1Name,
 			testutils.WithAnnotation(deploymentAnnotation, obj3Name),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateDeployment(
 			ctx,
@@ -848,8 +862,8 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		go testutils.RestartResource(ctx, obj1)
 		go testutils.RestartResource(ctx, obj2)
 
-		By(fmt.Sprintf("validating cascader handles concurrent updates to %s", obj3ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj3ID), 1*time.Minute, 2*time.Second)
+		By(fmt.Sprintf("validating cascader handles concurrent updates to %s", obj1ID))
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj3ID), 1*time.Minute, 2*time.Second)
 	})
 })
 
@@ -882,6 +896,7 @@ var _ = Describe("Operator watching multiple namespaces", func() {
 			testutils.WithAnnotation(statefulSetAnnotation, fmt.Sprintf("%s/%s", ns2, obj2Name)),
 			testutils.WithAnnotation(daemonSetAnnotation, fmt.Sprintf("%s/%s", ns3, obj3Name)),
 		)
+		obj1ID := testutils.GenerateID(obj1)
 
 		obj2 := testutils.CreateStatefulSet(
 			ctx,
@@ -900,13 +915,13 @@ var _ = Describe("Operator watching multiple namespaces", func() {
 		testutils.RestartResource(ctx, obj1)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj2ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj3ID))
-		testutils.ContainsLogs(fmt.Sprintf("%q,\"targetID\":%q", successfullTriggerTargetMsg, obj3ID), 1*time.Minute, 2*time.Second)
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj3ID), 1*time.Minute, 2*time.Second)
 	})
 
-	It("ignores targets outside of watched namespaces", func(ctx SpecContext) {
+	It("Ignores targets outside of watched namespaces", func(ctx SpecContext) {
 		ns1 := testutils.NSManager.CreateNamespace(ctx)
 		ns2 := testutils.NSManager.CreateNamespace(ctx)
 		nsIgnored := testutils.NSManager.CreateNamespace(ctx)

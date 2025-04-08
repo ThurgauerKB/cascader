@@ -98,11 +98,12 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	// Attempt target reloads.
 	succ, fail := b.triggerReloads(ctx, workload, targets)
 	if fail > 0 {
-		return ctrl.Result{}, fmt.Errorf("failed to trigger reloads: %d succeeded, %d failed", succ, fail)
+		log.Error(errors.New("partial target reload failure"), "Some targets failed to reload", "succeeded", succ, "failed", fail)
+		return ctrl.Result{}, nil // Do not return an error to avoid requeuing the workload.
 	}
 
 	metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(0) // Reset metric
-	log.Info("Successfully triggered reload for all targets.")
+	log.Info("Triggered reloads", "succeeded", succ, "failed", fail)
 
 	return ctrl.Result{}, nil
 }
@@ -163,20 +164,21 @@ func (b *BaseReconciler) getRequeueDuration(obj client.Object) (time.Duration, e
 // triggerReloads attempts to trigger reload for each target, returning success and failure counts.
 func (b *BaseReconciler) triggerReloads(ctx context.Context, workload workloads.Workload, targets []targets.Target) (succ, fail int) {
 	res := workload.Resource()
-	sourceID := workload.ID()
+	workloadID := workload.ID()
+	log := b.Logger.WithValues("workloadID", workloadID) // Append workload ID to logger context
 
 	for _, t := range targets {
 		targetID := t.ID()
 		kind := t.Kind().String()
 
 		if err := t.Trigger(ctx); err != nil {
-			b.Logger.Error(err, "Failed to trigger reload", "targetID", targetID)
+			log.Error(err, "Failed to trigger reload", "targetID", targetID)
 			b.Recorder.Eventf(
 				res,
 				corev1.EventTypeWarning,
 				"ReloadFailed",
-				"Cascader failed to trigger reload of %q due to change in %q: %v",
-				targetID, sourceID, err,
+				"Cascader failed to trigger reload due to change in %q: %v",
+				workloadID, err,
 			)
 			fail++
 
@@ -184,13 +186,13 @@ func (b *BaseReconciler) triggerReloads(ctx context.Context, workload workloads.
 		}
 
 		metrics.RestartsPerformed.WithLabelValues(kind, t.Namespace(), t.Name()).Inc()
-		b.Logger.Info("Successfully triggered reload", "targetID", targetID)
+		log.Info("Successfully triggered reload", "targetID", targetID)
 		b.Recorder.Eventf(
 			res,
 			corev1.EventTypeNormal,
 			"ReloadSucceeded",
-			"Cascader triggered reload of %q due to change in %q",
-			targetID, sourceID,
+			"Cascader triggered reload due to change in %q",
+			workloadID,
 		)
 		succ++
 	}

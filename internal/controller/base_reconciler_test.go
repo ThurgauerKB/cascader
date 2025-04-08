@@ -43,9 +43,10 @@ import (
 
 const (
 	defaultRequeuAfter              time.Duration = 10 * time.Second
+	workloadStableMsg               string        = "Workload is stable"
 	successfullTriggerTargetMsg     string        = "Successfully triggered reload"
-	successfullTriggerAllTargetsMsg string        = "Successfully triggered reload for all targets."
-	failedTriggerTargetMsg          string        = "Failed to trigger reload"
+	successfullTriggerAllTargetsMsg string        = "Triggered reloads"
+	failedTriggerTargetMsg          string        = "Some targets failed to reload"
 )
 
 // Helper function to create a fake BaseReconciler
@@ -519,12 +520,12 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		reconciler.KubeClient = fakeClient
 
 		result, err := reconciler.ReconcileWorkload(context.Background(), obj)
-		assert.Error(t, err, "reloads failed: 1 successes, 1 failures")
+		assert.NoError(t, err)
 		expectedResult := ctrl.Result{}
 		assert.Equal(t, expectedResult, result, "Expected successful result")
 
 		logOutput := logBuffer.String()
-		assert.Contains(t, logOutput, "Workload is stable", "Expected log to contain message about stable workload")
+		assert.Contains(t, logOutput, workloadStableMsg, "Expected log to contain message about stable workload")
 		assert.Contains(t, logOutput, successfullTriggerTargetMsg, "Expected log to contain message about successful reload")
 		assert.Contains(t, logOutput, failedTriggerTargetMsg, "Expected log to contain failure message for notfound-deployment")
 	})
