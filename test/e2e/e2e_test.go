@@ -52,6 +52,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 	})
 
 	BeforeEach(func(ctx SpecContext) {
+		testutils.LogBuffer.Reset()
 		ns = testutils.NSManager.CreateNamespace(ctx)
 	})
 
@@ -907,7 +908,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj3ID), 1*time.Minute, 2*time.Second)
 
 		By("validating cascader detects multiple restarts")
-		testutils.CountLogOccurrences("Restart detected", 3, 1*time.Minute, 2*time.Second)
+		testutils.CountLogOccurrences("Restart detected", 2, 1*time.Minute, 2*time.Second)
 	})
 })
 
