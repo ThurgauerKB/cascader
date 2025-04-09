@@ -124,10 +124,11 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	}
 	// Validate annotation uniqueness
 	configuredAnnotations := map[string]string{
-		"Deployment":   cfg.DeploymentAnnotation,
-		"StatefulSet":  cfg.StatefulSetAnnotation,
-		"DaemonSet":    cfg.DaemonSetAnnotation,
-		"RequeueAfter": cfg.RequeueAfterAnnotation,
+		"Deployment":          cfg.DeploymentAnnotation,
+		"StatefulSet":         cfg.StatefulSetAnnotation,
+		"DaemonSet":           cfg.DaemonSetAnnotation,
+		"LastObservedRestart": cfg.LastObservedRestartKey,
+		"RequeueAfter":        cfg.RequeueAfterAnnotation,
 	}
 	if err := utils.UniqueAnnotations(configuredAnnotations); err != nil {
 		return fmt.Errorf("annotation values must be unique: %w", err)
@@ -150,6 +151,7 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 			KubeClient:             mgr.GetClient(),
 			Recorder:               mgr.GetEventRecorderFor("deployment-controller"),
 			AnnotationKindMap:      annotationKindMap,
+			LastObservedRestartKey: cfg.LastObservedRestartKey,
 			RequeueAfterAnnotation: cfg.RequeueAfterAnnotation,
 			RequeueAfterDefault:    cfg.RequeueAfterDefault,
 		},
@@ -164,6 +166,7 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 			KubeClient:             mgr.GetClient(),
 			Recorder:               mgr.GetEventRecorderFor("statefulset-controller"),
 			AnnotationKindMap:      annotationKindMap,
+			LastObservedRestartKey: cfg.LastObservedRestartKey,
 			RequeueAfterAnnotation: cfg.RequeueAfterAnnotation,
 			RequeueAfterDefault:    cfg.RequeueAfterDefault,
 		},
@@ -178,6 +181,7 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 			KubeClient:             mgr.GetClient(),
 			Recorder:               mgr.GetEventRecorderFor("daemonset-controller"),
 			AnnotationKindMap:      annotationKindMap,
+			LastObservedRestartKey: cfg.LastObservedRestartKey,
 			RequeueAfterAnnotation: cfg.RequeueAfterAnnotation,
 			RequeueAfterDefault:    cfg.RequeueAfterDefault,
 		},

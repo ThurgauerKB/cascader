@@ -19,6 +19,7 @@ package controller
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/thurgauerkb/cascader/internal/kinds"
 	"github.com/thurgauerkb/cascader/internal/targets"
 	"github.com/thurgauerkb/cascader/internal/testutils"
+	"github.com/thurgauerkb/cascader/internal/utils"
 	"github.com/thurgauerkb/cascader/internal/workloads"
 
 	"github.com/stretchr/testify/assert"
@@ -56,6 +58,7 @@ func createBaseReconciler(objects ...client.Object) *BaseReconciler {
 		Logger:                 &logr.Logger{},
 		KubeClient:             fakeClient,
 		Recorder:               record.NewFakeRecorder(10),
+		LastObservedRestartKey: "cascader.tkb.ch/last-observed-restart",
 		RequeueAfterAnnotation: "cascader.tkb.ch/requeueAfter",
 		RequeueAfterDefault:    defaultRequeuAfter,
 		AnnotationKindMap: kinds.AnnotationKindMap{
@@ -337,6 +340,8 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 	t.Run("Successful Reconciliation - Workload is stable", func(t *testing.T) {
 		t.Parallel()
 
+		restartedAt := "2024-04-03T12:00:00Z"
+
 		obj := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-deployment",
@@ -357,6 +362,13 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 			},
 			Spec: appsv1.DeploymentSpec{
 				Replicas: testutils.Int32Ptr(4),
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							utils.RestartedAtKey: restartedAt,
+						},
+					},
+				},
 			},
 		}
 
@@ -391,9 +403,10 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		result, err := reconciler.ReconcileWorkload(context.Background(), obj)
 		assert.NoError(t, err, "Expected no error on successful reconciliation")
 		expectedResult := ctrl.Result{}
-		assert.Equal(t, expectedResult, result, "Expected successful result with default requeue duration")
+		assert.Equal(t, expectedResult, result, "Expected successful result")
 
 		logOutput := logBuffer.String()
+		assert.Contains(t, logOutput, "Restart detected", "Expected log to contain message about restart detected")
 		assert.Contains(t, logOutput, "Workload is stable", "Expected log to contain message about stable workload")
 		assert.Contains(t, logOutput, successfullTriggerTargetMsg, "Expected log to contain message about successful reload")
 		assert.Contains(t, logOutput, successfullTriggerAllTargetsMsg, "Expected log to contain message about successful reload")
@@ -528,6 +541,180 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		assert.Contains(t, logOutput, workloadStableMsg, "Expected log to contain message about stable workload")
 		assert.Contains(t, logOutput, successfullTriggerTargetMsg, "Expected log to contain message about successful reload")
 		assert.Contains(t, logOutput, failedTriggerTargetMsg, "Expected log to contain failure message for notfound-deployment")
+	})
+
+	t.Run("Error patching workload (LastObservedRestart)", func(t *testing.T) {
+		t.Parallel()
+
+		restartedAt := "2024-04-03T12:00:00Z"
+
+		obj := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "notfound-deployment",
+				Namespace: "test-namespace",
+				Annotations: map[string]string{
+					"cascader.tkb.ch/deployment": "test-namespace/another-deployment",
+				},
+			},
+			Status: appsv1.DeploymentStatus{
+				AvailableReplicas:  4,
+				ReadyReplicas:      4,
+				UpdatedReplicas:    4,
+				ObservedGeneration: 5,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Replicas: testutils.Int32Ptr(4),
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							utils.RestartedAtKey: restartedAt,
+						},
+					},
+				},
+			},
+		}
+
+		// Create fake client with objects
+		baseFakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(obj).Build()
+		fakeClient := &testutils.MockClientWithError{
+			Client:        baseFakeClient,
+			PatchErrorFor: testutils.NamedError{Name: "notfound-deployment", Namespace: "test-namespace"},
+		}
+
+		// Capture logs into a string buffer
+		var logBuffer bytes.Buffer
+		logger := zap.New(zap.WriteTo(&logBuffer))
+
+		reconciler := createBaseReconciler()
+		reconciler.Logger = &logger
+		reconciler.KubeClient = fakeClient
+
+		result, err := reconciler.ReconcileWorkload(context.Background(), obj)
+		assert.Error(t, err)
+		expectedResult := ctrl.Result{}
+		assert.Equal(t, expectedResult, result, "Expected successful result")
+		assert.EqualError(t, err, fmt.Sprintf("failed get last restartedAt annotation: failed to patch restart annotation: failed to patch annotation \"cascader.tkb.ch/last-observed-restart\"=%q: simulated patch error", restartedAt))
+	})
+}
+
+func TestIsNewRestart(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	_ = appsv1.AddToScheme(scheme)
+
+	t.Run("Restart Detected and Patched", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+		restartedAt := "2024-04-03T12:00:00Z"
+
+		dep := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-deployment",
+				Namespace: "default",
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							utils.RestartedAtKey: restartedAt,
+						},
+					},
+				},
+			},
+		}
+
+		reconciler := createBaseReconciler(dep)
+
+		workload, err := workloads.NewWorkload(dep)
+		assert.NoError(t, err)
+
+		changed, seenAt, err := reconciler.isNewRestart(ctx, workload)
+		assert.NoError(t, err)
+		assert.True(t, changed)
+		assert.Equal(t, restartedAt, seenAt)
+
+		// Confirm annotation was set
+		var updated appsv1.Deployment
+		err = reconciler.KubeClient.Get(ctx, client.ObjectKeyFromObject(dep), &updated)
+		assert.NoError(t, err)
+		observed := updated.Spec.Template.Annotations[reconciler.LastObservedRestartKey]
+		assert.NotEmpty(t, observed)
+	})
+
+	t.Run("Restart Already Observed", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+		timestamp := "2024-04-03T12:00:00Z"
+
+		dep := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-deployment",
+				Namespace: "default",
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							utils.RestartedAtKey:                    timestamp,
+							"cascader.tkb.ch/last-observed-restart": timestamp,
+						},
+					},
+				},
+			},
+		}
+
+		reconciler := createBaseReconciler(dep)
+
+		workload, err := workloads.NewWorkload(dep)
+		assert.NoError(t, err)
+
+		changed, seenAt, err := reconciler.isNewRestart(ctx, workload)
+		assert.NoError(t, err)
+		assert.False(t, changed)
+		assert.Equal(t, timestamp, seenAt)
+	})
+
+	t.Run("Patch Error Occurs", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+		restartedAt := "2024-04-03T12:00:00Z"
+
+		dep := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "failing-deployment",
+				Namespace: "default",
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							utils.RestartedAtKey: restartedAt,
+						},
+					},
+				},
+			},
+		}
+
+		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dep).Build()
+		mockClient := &testutils.MockClientWithError{
+			Client:        fakeClient,
+			PatchErrorFor: testutils.NamedError{Name: "failing-deployment", Namespace: "default"},
+		}
+
+		reconciler := createBaseReconciler(dep)
+		reconciler.KubeClient = mockClient
+
+		workload, err := workloads.NewWorkload(dep)
+		assert.NoError(t, err)
+
+		changed, seenAt, err := reconciler.isNewRestart(ctx, workload)
+		assert.Error(t, err)
+		assert.False(t, changed)
+		assert.Empty(t, seenAt)
 	})
 }
 

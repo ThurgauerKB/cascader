@@ -26,6 +26,7 @@ import (
 	"github.com/thurgauerkb/cascader/internal/kinds"
 	"github.com/thurgauerkb/cascader/internal/metrics"
 	"github.com/thurgauerkb/cascader/internal/targets"
+	"github.com/thurgauerkb/cascader/internal/utils"
 	"github.com/thurgauerkb/cascader/internal/workloads"
 
 	"github.com/go-logr/logr"
@@ -41,6 +42,7 @@ type BaseReconciler struct {
 	Logger                 *logr.Logger            // Logger is used for logging reconciliation events.
 	Recorder               record.EventRecorder    // Recorder records Kubernetes events.
 	AnnotationKindMap      kinds.AnnotationKindMap // AnnotationKindMap maps annotation keys to workload kinds.
+	LastObservedRestartKey string                  // LastObservedRestartKey is the annotation key for last observed restarts.
 	RequeueAfterAnnotation string                  // RequeueAfterAnnotation is the annotation key for requeue intervals.
 	RequeueAfterDefault    time.Duration           // RequeueAfterDefault is the default duration for requeuing.
 }
@@ -60,6 +62,15 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	kind := workload.Kind().String()
 
 	log := b.Logger.WithValues("workloadID", id) // Append workload ID to logger context
+
+	// Check if the workload has been restarted since the last reconciliation.
+	changed, restartedAt, err := b.isNewRestart(ctx, workload)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed get last restartedAt annotation: %w", err)
+	}
+	if changed {
+		log.Info("Restart detected", "restartedAt", restartedAt)
+	}
 
 	// Extract dependent targets from workload annotations.
 	targets, err := b.extractTargets(ctx, res)
@@ -106,6 +117,30 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	log.Info("Triggered reloads", "succeeded", succ, "failed", fail)
 
 	return ctrl.Result{}, nil
+}
+
+// isNewRestart checks if the workload has been restarted since the last reconciliation.
+func (b *BaseReconciler) isNewRestart(ctx context.Context, workload workloads.Workload) (bool, string, error) {
+	podTemplate := workload.PodTemplateSpec()
+	anns := podTemplate.GetAnnotations()
+	restartedAt, lastSeen := getRestartAnnotations(anns, utils.RestartedAtKey, b.LastObservedRestartKey)
+
+	if !hasNewRestart(restartedAt, lastSeen) {
+		return false, restartedAt, nil
+	}
+
+	if err := utils.PatchPodTemplateAnnotation(
+		ctx,
+		b.KubeClient,
+		workload.Resource(),
+		podTemplate,
+		b.LastObservedRestartKey,
+		restartedAt,
+	); err != nil {
+		return false, "", fmt.Errorf("failed to patch restart annotation: %w", err)
+	}
+
+	return true, restartedAt, nil
 }
 
 // extractTargets creates targets for a workload based on annotations.

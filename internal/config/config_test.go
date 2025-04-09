@@ -68,6 +68,7 @@ func TestParseArgs(t *testing.T) {
 		assert.Equal(t, "cascader.tkb.ch/statefulset", cfg.StatefulSetAnnotation)
 		assert.Equal(t, "cascader.tkb.ch/daemonset", cfg.DaemonSetAnnotation)
 		assert.Equal(t, "cascader.tkb.ch/requeue-after", cfg.RequeueAfterAnnotation)
+		assert.Equal(t, "cascader.tkb.ch/last-observed-restart", cfg.LastObservedRestartKey)
 		assert.Equal(t, 5*time.Second, cfg.RequeueAfterDefault)
 		assert.Equal(t, ":8443", cfg.MetricsAddr)
 		assert.Equal(t, ":8081", cfg.ProbeAddr)
@@ -87,6 +88,7 @@ func TestParseArgs(t *testing.T) {
 			"--deployment-annotation", "custom.deployment",
 			"--statefulset-annotation", "custom.statefulset",
 			"--daemonset-annotation", "custom.daemonset",
+			"--last-observed-restart-annotation", "custom.last-observed-restart",
 			"--requeue-after-annotation", "custom.requeue-after",
 			"--requeue-after-default", "10s",
 			"--metrics-bind-address", ":9090",
@@ -108,6 +110,7 @@ func TestParseArgs(t *testing.T) {
 		assert.Equal(t, "custom.deployment", cfg.DeploymentAnnotation)
 		assert.Equal(t, "custom.statefulset", cfg.StatefulSetAnnotation)
 		assert.Equal(t, "custom.daemonset", cfg.DaemonSetAnnotation)
+		assert.Equal(t, "custom.last-observed-restart", cfg.LastObservedRestartKey)
 		assert.Equal(t, "custom.requeue-after", cfg.RequeueAfterAnnotation)
 		assert.Equal(t, 10*time.Second, cfg.RequeueAfterDefault)
 		assert.Equal(t, ":9090", cfg.MetricsAddr)

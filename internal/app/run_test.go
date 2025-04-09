@@ -116,6 +116,7 @@ func TestRun(t *testing.T) {
 		args := []string{
 			"--health-probe-bind-address", ":8085",
 			"--leader-elect=false",
+			"--last-observed-restart-annotation", "cascader.tkb.ch/last-observed-restart",
 			"--deployment-annotation", "cascader.tkb.ch/deployment",
 			"--statefulset-annotation", "cascader.tkb.ch/deployment",
 			"--daemonset-annotation", "cascader.tkb.ch/daemonset",

@@ -30,6 +30,7 @@ const (
 	statefulSetAnnotation  string = "cascader.tkb.ch/statefulset"
 	daemonSetAnnotation    string = "cascader.tkb.ch/daemonset"
 	requeueAfterAnnotation string = "cascader.tkb.ch/requeue-after"
+	lastObservedRestartKey string = "cascader.tkb.ch/last-observed-restart"
 )
 
 // HelpError represents a special error type to indicate that help was requested.
@@ -59,6 +60,7 @@ type Config struct {
 	DeploymentAnnotation   string        // Annotation key for monitored Deployments
 	StatefulSetAnnotation  string        // Annotation key for monitored StatefulSets
 	DaemonSetAnnotation    string        // Annotation key for monitored DaemonSets
+	LastObservedRestartKey string        // Annotation key for last observed restart
 	RequeueAfterAnnotation string        // Annotation key for requeue interval
 	RequeueAfterDefault    time.Duration // Default requeue interval
 	EnableMetrics          bool          // Enable or disable metrics
@@ -78,6 +80,7 @@ func ParseArgs(args []string, out io.Writer, version string) (Config, error) {
 	fs.StringVar(&cfg.DeploymentAnnotation, "deployment-annotation", deploymentAnnotation, "Annotation key for monitored Deployments")
 	fs.StringVar(&cfg.StatefulSetAnnotation, "statefulset-annotation", statefulSetAnnotation, "Annotation key for monitored StatefulSets")
 	fs.StringVar(&cfg.DaemonSetAnnotation, "daemonset-annotation", daemonSetAnnotation, "Annotation key for monitored DaemonSets")
+	fs.StringVar(&cfg.LastObservedRestartKey, "last-observed-restart-annotation", lastObservedRestartKey, "Annotation key for last observed restart")
 	fs.StringVar(&cfg.RequeueAfterAnnotation, "requeue-after-annotation", requeueAfterAnnotation, "Annotation key for requeue interval override")
 	fs.DurationVar(&cfg.RequeueAfterDefault, "requeue-after-default", 5*time.Second, "Default requeue interval")
 
