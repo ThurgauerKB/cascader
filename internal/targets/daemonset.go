@@ -19,6 +19,7 @@ package targets
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
 	"github.com/thurgauerkb/cascader/internal/utils"
@@ -57,13 +58,15 @@ func (t *DaemonSetTarget) Trigger(ctx context.Context) error {
 		return fmt.Errorf("failed to fetch DaemonSet %s/%s: %w", t.namespace, t.name, err)
 	}
 
-	// Prepare a patch to modify the Pod Template's annotations.
-	patch := client.MergeFrom(ds.DeepCopy())
-
-	updateRestartedAtAnnotation(&ds.Spec.Template)
-
-	// Apply the patch to the DaemonSet.
-	if err := t.kubeClient.Patch(ctx, ds, patch); err != nil {
+	// Update the "restartedAt" annotation on the DaemonSet.
+	if err := utils.PatchPodTemplateAnnotation(
+		ctx,
+		t.kubeClient,
+		ds,
+		&ds.Spec.Template,
+		utils.RestartedAtKey,
+		time.Now().Format(time.RFC3339),
+	); err != nil {
 		return fmt.Errorf("failed to patch DaemonSet %s/%s: %w", t.namespace, t.name, err)
 	}
 

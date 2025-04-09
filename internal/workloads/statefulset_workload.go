@@ -23,6 +23,7 @@ import (
 	"github.com/thurgauerkb/cascader/internal/utils"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -35,6 +36,10 @@ func (w *StatefulSetWorkload) Resource() client.Object { return w.StatefulSet }
 func (w *StatefulSetWorkload) Kind() kinds.Kind        { return kinds.StatefulSetKind }
 func (w *StatefulSetWorkload) ID() string {
 	return utils.GenerateID(w.Kind(), w.StatefulSet.GetNamespace(), w.StatefulSet.GetName())
+}
+
+func (w *StatefulSetWorkload) PodTemplateSpec() *corev1.PodTemplateSpec {
+	return &w.StatefulSet.Spec.Template
 }
 
 // Stable checks if the StatefulSet is stable based on its replica status.

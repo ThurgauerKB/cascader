@@ -17,10 +17,18 @@ limitations under the License.
 package utils
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/thurgauerkb/cascader/internal/kinds"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestUniqueAnnotations(t *testing.T) {
@@ -248,5 +256,70 @@ func TestGenerateID(t *testing.T) {
 		expectedID := "Deployment/my-namespace/my-deployment"
 		id := GenerateID(kinds.DeploymentKind, "my-namespace", "my-deployment")
 		assert.Equal(t, expectedID, id)
+	})
+}
+
+func TestPatchPodTemplateAnnotation(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	_ = appsv1.AddToScheme(scheme)
+
+	key := "cascader.tkb.ch/lastObservedRestart"
+	value := "2024-04-03T12:00:00Z"
+
+	t.Run("Successful Patch", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+
+		dep := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-deploy",
+				Namespace: "default",
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{},
+					},
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{Name: "app", Image: "nginx"},
+						},
+					},
+				},
+			},
+		}
+
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dep).Build()
+
+		err := PatchPodTemplateAnnotation(ctx, cl, dep, &dep.Spec.Template, key, value)
+		assert.NoError(t, err, "expected no error when patching")
+
+		assert.Equal(t, value, dep.Spec.Template.Annotations[key])
+
+		var patched appsv1.Deployment
+		err = cl.Get(ctx, client.ObjectKeyFromObject(dep), &patched)
+		assert.NoError(t, err)
+		assert.Equal(t, value, patched.Spec.Template.Annotations[key])
+	})
+
+	t.Run("Invalid Object Type", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+		invalid := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod1",
+				Namespace: "default",
+			},
+		}
+
+		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+
+		err := PatchPodTemplateAnnotation(ctx, cl, invalid, &corev1.PodTemplateSpec{}, key, value)
+
+		assert.Error(t, err, "expected error when patching unsupported object")
 	})
 }

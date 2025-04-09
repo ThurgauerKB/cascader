@@ -87,6 +87,28 @@ func TestDeploymentWorkload_Methods(t *testing.T) {
 
 		assert.Equal(t, "Deployment/default/test-deployment", depw.ID(), "GetID should return the Deployment/default/test-deployment name")
 	})
+
+	t.Run("Get Deployment PodTemplateSpec", func(t *testing.T) {
+		t.Parallel()
+
+		ds := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-deployment",
+				Namespace: "default",
+			},
+		}
+		ds.GetObjectKind().SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "apps",
+			Version: "v1",
+			Kind:    "Deployment",
+		})
+
+		annotations := map[string]string{"test": "cascader"}
+		ds.Spec.Template.SetAnnotations(annotations)
+		dsw := DeploymentWorkload{Deployment: ds}
+
+		assert.Equal(t, annotations, dsw.PodTemplateSpec().GetAnnotations(), "GetPodTemplateSpec should return the Deployment PodTemplateSpec")
+	})
 }
 
 func TestDeploymentWorkload_IsStable(t *testing.T) {

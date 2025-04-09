@@ -19,6 +19,7 @@ package targets
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
 	"github.com/thurgauerkb/cascader/internal/utils"
@@ -57,13 +58,15 @@ func (t *DeploymentTarget) Trigger(ctx context.Context) error {
 		return fmt.Errorf("failed to fetch Deployment %s/%s: %w", t.namespace, t.name, err)
 	}
 
-	// Prepare a patch to modify the Pod Template's annotations.
-	patch := client.MergeFrom(dep.DeepCopy())
-
-	updateRestartedAtAnnotation(&dep.Spec.Template)
-
-	// Apply the patch to the Deployment.
-	if err := t.kubeClient.Patch(ctx, dep, patch); err != nil {
+	// Update the "restartedAt" annotation on the Deployment.
+	if err := utils.PatchPodTemplateAnnotation(
+		ctx,
+		t.kubeClient,
+		dep,
+		&dep.Spec.Template,
+		utils.RestartedAtKey,
+		time.Now().Format(time.RFC3339),
+	); err != nil {
 		return fmt.Errorf("failed to patch Deployment %s/%s: %w", t.namespace, t.name, err)
 	}
 

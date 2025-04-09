@@ -14,22 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package targets
+package controller
 
-import (
-	"time"
+// hasNewRestart compares the current and last-seen restart annotations.
+func hasNewRestart(restartedAt, lastSeen string) bool {
+	return restartedAt != "" && (lastSeen == "" || restartedAt != lastSeen)
+}
 
-	"github.com/thurgauerkb/cascader/internal/utils"
-
-	corev1 "k8s.io/api/core/v1"
-)
-
-// updateRestartedAtAnnotation updates the "restartedAt" annotation on the provided PodTemplateSpec.
-func updateRestartedAtAnnotation(template *corev1.PodTemplateSpec) {
-	annotations := template.GetAnnotations()
-	if annotations == nil {
-		annotations = make(map[string]string)
+// getRestartAnnotations safely extracts both restart-related annotations.
+func getRestartAnnotations(anns map[string]string, restartedAtKey, lastSeenKey string) (string, string) {
+	if anns == nil {
+		return "", ""
 	}
-	annotations[utils.RestartedAtKey] = time.Now().Format(time.RFC3339)
-	template.SetAnnotations(annotations)
+	return anns[restartedAtKey], anns[lastSeenKey]
 }

@@ -23,6 +23,8 @@ import (
 	"github.com/thurgauerkb/cascader/internal/utils"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -35,6 +37,10 @@ func (w *DeploymentWorkload) Resource() client.Object { return w.Deployment }
 func (w *DeploymentWorkload) Kind() kinds.Kind        { return kinds.DeploymentKind }
 func (w *DeploymentWorkload) ID() string {
 	return utils.GenerateID(w.Kind(), w.Deployment.GetNamespace(), w.Deployment.GetName())
+}
+
+func (w *DeploymentWorkload) PodTemplateSpec() *corev1.PodTemplateSpec {
+	return &w.Deployment.Spec.Template
 }
 
 // Stable checks if the Deployment is stable based on replica status.

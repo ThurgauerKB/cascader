@@ -19,6 +19,7 @@ package targets
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
 	"github.com/thurgauerkb/cascader/internal/utils"
@@ -57,13 +58,15 @@ func (t *StatefulSetTarget) Trigger(ctx context.Context) error {
 		return fmt.Errorf("failed to fetch StatefulSet %s/%s: %w", t.namespace, t.name, err)
 	}
 
-	// Prepare a patch to modify the Pod Template's annotations.
-	patch := client.MergeFrom(sts.DeepCopy())
-
-	updateRestartedAtAnnotation(&sts.Spec.Template)
-
-	// Apply the patch to the StatefulSet.
-	if err := t.kubeClient.Patch(ctx, sts, patch); err != nil {
+	// Update the "restartedAt" annotation on the StatefulSetSet.
+	if err := utils.PatchPodTemplateAnnotation(
+		ctx,
+		t.kubeClient,
+		sts,
+		&sts.Spec.Template,
+		utils.RestartedAtKey,
+		time.Now().Format(time.RFC3339),
+	); err != nil {
 		return fmt.Errorf("failed to patch StatefulSet %s/%s: %w", t.namespace, t.name, err)
 	}
 

@@ -17,13 +17,17 @@ limitations under the License.
 package utils
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
+
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const RestartedAtKey string = "kubectl.kubernetes.io/restartedAt"
@@ -92,4 +96,32 @@ func ParseTargetRef(ref, defaultNS string) (namespace, name string, err error) {
 // GenerateID returns a unique identifier for a resource in the format "Kind/namespace/name".
 func GenerateID(kind kinds.Kind, namespace, name string) string {
 	return fmt.Sprintf("%s/%s/%s", kind, namespace, name)
+}
+
+// PatchPodTemplateAnnotation updates the given annotation key in the pod template spec
+// and patches the parent object using server-side merge.
+func PatchPodTemplateAnnotation(
+	ctx context.Context,
+	c client.Client,
+	obj client.Object,
+	template *corev1.PodTemplateSpec,
+	key, value string,
+) error {
+	// Make a deep copy of the object before mutating it
+	original := obj.DeepCopyObject().(client.Object)
+
+	// Safely get and modify the annotations
+	annotations := template.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+	annotations[key] = value
+	template.SetAnnotations(annotations)
+
+	// Apply patch using MergeFrom
+	if err := c.Patch(ctx, obj, client.MergeFrom(original)); err != nil {
+		return fmt.Errorf("failed to patch annotation %q=%q: %w", key, value, err)
+	}
+
+	return nil
 }
