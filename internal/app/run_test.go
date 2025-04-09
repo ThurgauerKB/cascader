@@ -37,6 +37,7 @@ func TestRun(t *testing.T) {
 		args := []string{
 			"--leader-elect=false",
 			"--health-probe-bind-address", ":8082",
+			"--watch-namespace=test-cascader",
 			"--metrics-enabled=false",
 		}
 		out := &bytes.Buffer{}
@@ -61,6 +62,7 @@ func TestRun(t *testing.T) {
 
 	t.Run("Invalid args", func(t *testing.T) {
 		t.Parallel()
+
 		ctx := context.Background()
 		args := []string{"--invalid-flag"}
 		out := &bytes.Buffer{}
@@ -73,6 +75,7 @@ func TestRun(t *testing.T) {
 
 	t.Run("Request Help", func(t *testing.T) {
 		t.Parallel()
+
 		ctx := context.Background()
 		args := []string{"--version"}
 		out := &bytes.Buffer{}
