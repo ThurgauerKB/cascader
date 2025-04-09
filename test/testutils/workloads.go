@@ -289,6 +289,8 @@ func RestartResource(ctx context.Context, resource client.Object) {
 			res.Spec.Template.Annotations = map[string]string{}
 		}
 		res.Spec.Template.Annotations[utils.RestartedAtKey] = now
+	default:
+		panic(fmt.Sprintf("unsupported resource type: %T", resource))
 	}
 
 	err := K8sClient.Patch(ctx, resource, patch)
