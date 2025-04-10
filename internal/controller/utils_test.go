@@ -20,83 +20,89 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 )
 
-func TestHasNewRestart(t *testing.T) {
+func TestRestartMarkerUpdated(t *testing.T) {
 	t.Parallel()
 
-	t.Run("First time", func(t *testing.T) {
+	restartedAtKey := "restart"
+	lastObservedKey := "last"
+
+	t.Run("No annotations", func(t *testing.T) {
 		t.Parallel()
 
-		got := hasNewRestart("2024-04-03T10:00:00Z", "")
-		assert.Equal(t, true, got)
+		changed, restartedAt := restartMarkerUpdated(&corev1.PodTemplateSpec{}, restartedAtKey, lastObservedKey)
+		assert.False(t, changed)
+		assert.Empty(t, restartedAt)
+	})
+
+	t.Run("First seen", func(t *testing.T) {
+		t.Parallel()
+
+		podTemplate := &corev1.PodTemplateSpec{}
+		podTemplate.Annotations = map[string]string{
+			restartedAtKey: "now",
+		}
+
+		changed, restartedAt := restartMarkerUpdated(podTemplate, restartedAtKey, lastObservedKey)
+		assert.True(t, changed)
+		assert.Equal(t, "now", restartedAt)
+	})
+
+	t.Run("Already observed", func(t *testing.T) {
+		t.Parallel()
+
+		podTemplate := &corev1.PodTemplateSpec{}
+		podTemplate.Annotations = map[string]string{
+			restartedAtKey:  "now",
+			lastObservedKey: "now",
+		}
+
+		changed, restartedAt := restartMarkerUpdated(podTemplate, restartedAtKey, lastObservedKey)
+		assert.False(t, changed)
+		assert.Equal(t, "now", restartedAt)
+	})
+
+	t.Run("Changed since last observed", func(t *testing.T) {
+		t.Parallel()
+
+		podTemplate := &corev1.PodTemplateSpec{}
+		podTemplate.Annotations = map[string]string{
+			restartedAtKey:  "new",
+			lastObservedKey: "old",
+		}
+
+		changed, restartedAt := restartMarkerUpdated(podTemplate, restartedAtKey, lastObservedKey)
+		assert.True(t, changed)
+		assert.Equal(t, "new", restartedAt)
+	})
+}
+
+func TestRestartChanged(t *testing.T) {
+	t.Parallel()
+
+	t.Run("First time seen", func(t *testing.T) {
+		t.Parallel()
+
+		assert.True(t, restartMarkerChanged("2024-04-03T10:00:00Z", ""))
 	})
 
 	t.Run("Already seen", func(t *testing.T) {
 		t.Parallel()
 
-		got := hasNewRestart("2024-04-03T10:00:00Z", "2024-04-03T10:00:00Z")
-		assert.Equal(t, false, got)
+		assert.False(t, restartMarkerChanged("2024-04-03T10:00:00Z", "2024-04-03T10:00:00Z"))
 	})
 
 	t.Run("New restart", func(t *testing.T) {
 		t.Parallel()
 
-		got := hasNewRestart("2024-04-03T11:00:00Z", "2024-04-03T10:00:00Z")
-		assert.Equal(t, true, got)
+		assert.True(t, restartMarkerChanged("2024-04-03T11:00:00Z", "2024-04-03T10:00:00Z"))
 	})
 
-	t.Run("No restart", func(t *testing.T) {
+	t.Run("No restart timestamp", func(t *testing.T) {
 		t.Parallel()
 
-		got := hasNewRestart("", "")
-		assert.Equal(t, false, got)
-	})
-}
-
-func TestGetRestartAnnotations(t *testing.T) {
-	t.Parallel()
-
-	const restartedAtKey = "a"
-	const lastSeenKey = "b"
-
-	t.Run("Nil map", func(t *testing.T) {
-		t.Parallel()
-
-		restartedAt, lastSeen := getRestartAnnotations(nil, restartedAtKey, lastSeenKey)
-		assert.Empty(t, restartedAt)
-		assert.Empty(t, lastSeen)
-	})
-
-	t.Run("Empty map", func(t *testing.T) {
-		t.Parallel()
-
-		anns := map[string]string{}
-		restartedAt, lastSeen := getRestartAnnotations(anns, restartedAtKey, lastSeenKey)
-		assert.Empty(t, restartedAt)
-		assert.Empty(t, lastSeen)
-	})
-
-	t.Run("Only restartedAt", func(t *testing.T) {
-		t.Parallel()
-
-		anns := map[string]string{
-			restartedAtKey: "now",
-		}
-		restartedAt, lastSeen := getRestartAnnotations(anns, restartedAtKey, lastSeenKey)
-		assert.Equal(t, "now", restartedAt)
-		assert.Empty(t, lastSeen)
-	})
-
-	t.Run("Both set", func(t *testing.T) {
-		t.Parallel()
-
-		anns := map[string]string{
-			restartedAtKey: "now",
-			lastSeenKey:    "before",
-		}
-		restartedAt, lastSeen := getRestartAnnotations(anns, restartedAtKey, lastSeenKey)
-		assert.Equal(t, "now", restartedAt)
-		assert.Equal(t, "before", lastSeen)
+		assert.False(t, restartMarkerChanged("", ""))
 	})
 }

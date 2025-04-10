@@ -64,12 +64,12 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	log := b.Logger.WithValues("workloadID", id) // Append workload ID to logger context
 
 	// Check if the workload has been restarted since the last reconciliation.
-	changed, restartedAt, err := b.isNewRestart(ctx, workload)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed get last restartedAt annotation: %w", err)
-	}
-	if changed {
+	if updated, restartedAt := restartMarkerUpdated(workload.PodTemplateSpec(), utils.RestartedAtKey, b.LastObservedRestartKey); updated {
 		log.Info("Restart detected", "restartedAt", restartedAt)
+
+		if err := b.patchRestartMarker(ctx, workload, restartedAt); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to patch restart annotation: %w", err)
+		}
 	}
 
 	// Extract dependent targets from workload annotations.
@@ -84,7 +84,7 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	metrics.Workloads.WithLabelValues(ns, name, kind).Set(float64(len(targets)))
 
 	// Determine requeue interval.
-	dur, err := b.getRequeueDuration(res)
+	dur, err := b.requeueDurationFor(res)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Invalid requeue annotation, using default: %s", b.RequeueAfterDefault))
 	}
@@ -119,28 +119,20 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	return ctrl.Result{}, nil
 }
 
-// isNewRestart checks if the workload has been restarted since the last reconciliation.
-func (b *BaseReconciler) isNewRestart(ctx context.Context, workload workloads.Workload) (bool, string, error) {
-	podTemplate := workload.PodTemplateSpec()
-	anns := podTemplate.GetAnnotations()
-	restartedAt, lastSeen := getRestartAnnotations(anns, utils.RestartedAtKey, b.LastObservedRestartKey)
-
-	if !hasNewRestart(restartedAt, lastSeen) {
-		return false, restartedAt, nil
-	}
-
-	if err := utils.PatchPodTemplateAnnotation(
+// patchRestartMarker updates the restart annotation in the workload's PodTemplateSpec.
+func (b *BaseReconciler) patchRestartMarker(
+	ctx context.Context,
+	workload workloads.Workload,
+	restartedAt string,
+) error {
+	return utils.PatchPodTemplateAnnotation(
 		ctx,
 		b.KubeClient,
 		workload.Resource(),
-		podTemplate,
+		workload.PodTemplateSpec(),
 		b.LastObservedRestartKey,
 		restartedAt,
-	); err != nil {
-		return false, "", fmt.Errorf("failed to patch restart annotation: %w", err)
-	}
-
-	return true, restartedAt, nil
+	)
 }
 
 // extractTargets creates targets for a workload based on annotations.
@@ -177,7 +169,7 @@ func (b *BaseReconciler) extractTargets(ctx context.Context, source client.Objec
 }
 
 // getRequeueDuration determines requeue interval from annotations or falls back to default.
-func (b *BaseReconciler) getRequeueDuration(obj client.Object) (time.Duration, error) {
+func (b *BaseReconciler) requeueDurationFor(obj client.Object) (time.Duration, error) {
 	anns := obj.GetAnnotations()
 	if anns == nil {
 		return b.RequeueAfterDefault, nil

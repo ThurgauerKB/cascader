@@ -16,15 +16,19 @@ limitations under the License.
 
 package controller
 
-// hasNewRestart compares the current and last-seen restart annotations.
-func hasNewRestart(restartedAt, lastSeen string) bool {
-	return restartedAt != "" && (lastSeen == "" || restartedAt != lastSeen)
+import corev1 "k8s.io/api/core/v1"
+
+// restartMarkerUpdated reports whether the restart marker differs from the last observed marker.
+func restartMarkerUpdated(podTemplate *corev1.PodTemplateSpec, restartedAtKey, lastObservedRestartKey string) (bool, string) {
+	annotations := podTemplate.GetAnnotations()
+	if annotations == nil {
+		return false, ""
+	}
+	current, lastObserved := annotations[restartedAtKey], annotations[lastObservedRestartKey]
+	return restartMarkerChanged(current, lastObserved), current
 }
 
-// getRestartAnnotations safely extracts both restart-related annotations.
-func getRestartAnnotations(anns map[string]string, restartedAtKey, lastSeenKey string) (string, string) {
-	if anns == nil {
-		return "", ""
-	}
-	return anns[restartedAtKey], anns[lastSeenKey]
+// restartMarkerChanged reports whether restartedAt differs from lastObservedAt.
+func restartMarkerChanged(restartedAt, lastObservedAt string) bool {
+	return restartedAt != "" && (lastObservedAt == "" || restartedAt != lastObservedAt)
 }

@@ -75,6 +75,8 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = appsv1.AddToScheme(scheme)
 
+	restartedAt := "2024-04-03T12:00:00Z"
+
 	t.Run("Invalid Workload Kind", func(t *testing.T) {
 		t.Parallel()
 
@@ -340,8 +342,6 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 	t.Run("Successful Reconciliation - Workload is stable", func(t *testing.T) {
 		t.Parallel()
 
-		restartedAt := "2024-04-03T12:00:00Z"
-
 		obj := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-deployment",
@@ -546,8 +546,6 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 	t.Run("Error patching workload (LastObservedRestart)", func(t *testing.T) {
 		t.Parallel()
 
-		restartedAt := "2024-04-03T12:00:00Z"
-
 		obj := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "notfound-deployment",
@@ -593,21 +591,20 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		assert.Error(t, err)
 		expectedResult := ctrl.Result{}
 		assert.Equal(t, expectedResult, result, "Expected successful result")
-		assert.EqualError(t, err, fmt.Sprintf("failed get last restartedAt annotation: failed to patch restart annotation: failed to patch annotation \"cascader.tkb.ch/last-observed-restart\"=%q: simulated patch error", restartedAt))
+		assert.EqualError(t, err, fmt.Sprintf("failed to patch restart annotation: failed to patch annotation \"cascader.tkb.ch/last-observed-restart\"=%q: simulated patch error", restartedAt))
 	})
 }
 
-func TestIsNewRestart(t *testing.T) {
+func TestPatchRestartMarker(t *testing.T) {
 	t.Parallel()
 
 	scheme := runtime.NewScheme()
 	_ = appsv1.AddToScheme(scheme)
+	restartedAt := "2024-04-03T12:00:00Z"
 
-	t.Run("Restart Detected and Patched", func(t *testing.T) {
+	t.Run("Successful patch", func(t *testing.T) {
 		t.Parallel()
-
 		ctx := context.Background()
-		restartedAt := "2024-04-03T12:00:00Z"
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -630,10 +627,8 @@ func TestIsNewRestart(t *testing.T) {
 		workload, err := workloads.NewWorkload(dep)
 		assert.NoError(t, err)
 
-		changed, seenAt, err := reconciler.isNewRestart(ctx, workload)
+		err = reconciler.patchRestartMarker(ctx, workload, restartedAt)
 		assert.NoError(t, err)
-		assert.True(t, changed)
-		assert.Equal(t, restartedAt, seenAt)
 
 		// Confirm annotation was set
 		var updated appsv1.Deployment
@@ -641,80 +636,6 @@ func TestIsNewRestart(t *testing.T) {
 		assert.NoError(t, err)
 		observed := updated.Spec.Template.Annotations[reconciler.LastObservedRestartKey]
 		assert.NotEmpty(t, observed)
-	})
-
-	t.Run("Restart Already Observed", func(t *testing.T) {
-		t.Parallel()
-
-		ctx := context.Background()
-		timestamp := "2024-04-03T12:00:00Z"
-
-		dep := &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-deployment",
-				Namespace: "default",
-			},
-			Spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{
-							utils.RestartedAtKey:                    timestamp,
-							"cascader.tkb.ch/last-observed-restart": timestamp,
-						},
-					},
-				},
-			},
-		}
-
-		reconciler := createBaseReconciler(dep)
-
-		workload, err := workloads.NewWorkload(dep)
-		assert.NoError(t, err)
-
-		changed, seenAt, err := reconciler.isNewRestart(ctx, workload)
-		assert.NoError(t, err)
-		assert.False(t, changed)
-		assert.Equal(t, timestamp, seenAt)
-	})
-
-	t.Run("Patch Error Occurs", func(t *testing.T) {
-		t.Parallel()
-
-		ctx := context.Background()
-		restartedAt := "2024-04-03T12:00:00Z"
-
-		dep := &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "failing-deployment",
-				Namespace: "default",
-			},
-			Spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{
-							utils.RestartedAtKey: restartedAt,
-						},
-					},
-				},
-			},
-		}
-
-		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dep).Build()
-		mockClient := &testutils.MockClientWithError{
-			Client:        fakeClient,
-			PatchErrorFor: testutils.NamedError{Name: "failing-deployment", Namespace: "default"},
-		}
-
-		reconciler := createBaseReconciler(dep)
-		reconciler.KubeClient = mockClient
-
-		workload, err := workloads.NewWorkload(dep)
-		assert.NoError(t, err)
-
-		changed, seenAt, err := reconciler.isNewRestart(ctx, workload)
-		assert.Error(t, err)
-		assert.False(t, changed)
-		assert.Empty(t, seenAt)
 	})
 }
 
@@ -958,7 +879,7 @@ func TestTriggerReloads(t *testing.T) {
 	})
 }
 
-func TestGetRequeueDuration(t *testing.T) {
+func TestRequeueDurationFor(t *testing.T) {
 	t.Parallel()
 
 	reconciler := createBaseReconciler()
@@ -973,7 +894,7 @@ func TestGetRequeueDuration(t *testing.T) {
 			},
 		}
 
-		duration, err := reconciler.getRequeueDuration(obj)
+		duration, err := reconciler.requeueDurationFor(obj)
 		assert.NoError(t, err)
 		assert.Equal(t, defaultRequeuAfter, duration, "Expected duration to be 2 seconds when annotations are missing")
 	})
@@ -991,7 +912,7 @@ func TestGetRequeueDuration(t *testing.T) {
 			},
 		}
 
-		duration, err := reconciler.getRequeueDuration(obj)
+		duration, err := reconciler.requeueDurationFor(obj)
 		assert.NoError(t, err)
 		assert.Equal(t, defaultRequeuAfter, duration, "Expected duration to be 2 seconds when annotation is not found")
 	})
@@ -1009,7 +930,7 @@ func TestGetRequeueDuration(t *testing.T) {
 			},
 		}
 
-		duration, err := reconciler.getRequeueDuration(obj)
+		duration, err := reconciler.requeueDurationFor(obj)
 		assert.NoError(t, err)
 		assert.Equal(t, defaultRequeuAfter, duration, "Expected duration to be 2 seconds when annotation value is empty")
 	})
@@ -1027,7 +948,7 @@ func TestGetRequeueDuration(t *testing.T) {
 			},
 		}
 
-		duration, err := reconciler.getRequeueDuration(obj)
+		duration, err := reconciler.requeueDurationFor(obj)
 		assert.Error(t, err)
 		assert.EqualError(t, err, "invalid annotation: time: invalid duration \"invalid-duration\"")
 		assert.Equal(t, defaultRequeuAfter, duration, "Expected duration to be 2 seconds on parsing error")
@@ -1046,7 +967,7 @@ func TestGetRequeueDuration(t *testing.T) {
 			},
 		}
 
-		duration, err := reconciler.getRequeueDuration(obj)
+		duration, err := reconciler.requeueDurationFor(obj)
 		assert.NoError(t, err)
 		assert.Equal(t, defaultRequeuAfter, duration, "Expected duration to be 10s")
 	})
