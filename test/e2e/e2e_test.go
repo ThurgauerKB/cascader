@@ -20,12 +20,11 @@ import (
 	"fmt"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
-
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 )
 
 const (
@@ -41,6 +40,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 	BeforeAll(func() {
 		testutils.StartOperatorWithFlags([]string{
 			"--leader-elect=false",
+			"--requeue-after-default=1s",
 			"--health-probe-bind-address=:8082",
 			"--metrics-enabled=false",
 		})
@@ -51,6 +51,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 	})
 
 	BeforeEach(func(ctx SpecContext) {
+		testutils.LogBuffer.Reset()
 		ns = testutils.NSManager.CreateNamespace(ctx)
 	})
 
@@ -72,6 +73,7 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 			ns,
 			obj1Name,
 			testutils.WithAnnotation(deploymentAnnotation, obj2Name),
+			testutils.WithStartupProbe(5),
 		)
 		obj1ID := testutils.GenerateID(obj1)
 
@@ -84,6 +86,11 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 
 		testutils.RestartResource(ctx, obj1)
 
+		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
+
+		testutils.LogBuffer.Reset()
+		testutils.RestartResource(ctx, obj1)
 		By(fmt.Sprintf("validating cascader fetches the restart of %s", obj2ID))
 		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID), 1*time.Minute, 2*time.Second)
 	})
@@ -865,6 +872,43 @@ var _ = Describe("Operator in default mode", Ordered, func() {
 		By(fmt.Sprintf("validating cascader handles concurrent updates to %s", obj1ID))
 		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj3ID), 1*time.Minute, 2*time.Second)
 	})
+
+	It("Detect multiple restarts", func(ctx SpecContext) {
+		obj1Name := testutils.GenerateUniqueName("dep1")
+		obj2Name := testutils.GenerateUniqueName("dep2")
+		obj3Name := testutils.GenerateUniqueName("target")
+
+		obj1 := testutils.CreateDeployment(
+			ctx,
+			ns,
+			obj1Name,
+			testutils.WithAnnotation(deploymentAnnotation, obj3Name),
+		)
+		obj1ID := testutils.GenerateID(obj1)
+
+		obj2 := testutils.CreateDeployment(
+			ctx,
+			ns,
+			obj2Name,
+			testutils.WithAnnotation(deploymentAnnotation, obj3Name),
+		)
+
+		obj3 := testutils.CreateDeployment(
+			ctx,
+			ns,
+			obj3Name,
+		)
+		obj3ID := testutils.GenerateID(obj3)
+
+		go testutils.RestartResource(ctx, obj1)
+		go testutils.RestartResource(ctx, obj2)
+
+		By(fmt.Sprintf("validating cascader handles concurrent updates to %s", obj1ID))
+		testutils.ContainsLogs(fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj3ID), 1*time.Minute, 2*time.Second)
+
+		By("validating cascader detects multiple restarts")
+		testutils.CountLogOccurrences("Restart detected", 2, 1*time.Minute, 2*time.Second)
+	})
 })
 
 var _ = Describe("Operator watching multiple namespaces", func() {
@@ -954,5 +998,35 @@ var _ = Describe("Operator watching multiple namespaces", func() {
 
 		By("Validating fetching resource error")
 		testutils.ContainsLogs(fmt.Sprintf("dependency cycle detected: dependency cycle check failed: failed to fetch resource %s: unable to get: %s/%s because of unknown namespace for the cache", obj2ID, nsIgnored, obj2Name), 10*time.Second, 1*time.Second)
+	})
+})
+
+var _ = Describe("Edge cases", func() {
+	AfterEach(func(ctx SpecContext) {
+		testutils.StopOperator()
+	})
+
+	It("Explicit enable HTTP2", func(ctx SpecContext) {
+		testutils.StartOperatorWithFlags([]string{
+			"--leader-elect=false",
+			"--health-probe-bind-address=:8085",
+			"--metrics-enabled=false",
+			"--enable-http2=true",
+		})
+
+		By("Validating logs")
+		testutils.ContainsNotLogs("disabling HTTP/2 for compatibility", 10*time.Second, 2*time.Second)
+	})
+
+	It("Explicit disable HTTP2", func(ctx SpecContext) {
+		testutils.StartOperatorWithFlags([]string{
+			"--leader-elect=false",
+			"--health-probe-bind-address=:8086",
+			"--metrics-enabled=false",
+			"--enable-http2=false",
+		})
+
+		By("Validating logs")
+		testutils.ContainsLogs("disabling HTTP/2 for compatibility", 10*time.Second, 2*time.Second)
 	})
 })

@@ -192,7 +192,7 @@ func TestCheckCycle(t *testing.T) {
 	})
 }
 
-func TestWalkDependencies(t *testing.T) {
+func TestDetectCycle(t *testing.T) {
 	t.Parallel()
 
 	scheme := runtime.NewScheme()
@@ -208,7 +208,7 @@ func TestWalkDependencies(t *testing.T) {
 		depChain := []string{"root", target.ID()}
 
 		reconciler := &BaseReconciler{}
-		hasCycle, updatedChain, err := reconciler.walkDependencies(ctx, target, "root", depChain)
+		hasCycle, updatedChain, err := reconciler.detectCycle(ctx, target, "root", depChain)
 
 		assert.NoError(t, err)
 		assert.True(t, hasCycle, "Expected a cycle to be detected")
@@ -228,7 +228,7 @@ func TestWalkDependencies(t *testing.T) {
 			KubeClient: fakeClient,
 		}
 
-		hasCycle, updatedChain, err := reconciler.walkDependencies(ctx, target, "root", depChain)
+		hasCycle, updatedChain, err := reconciler.detectCycle(ctx, target, "root", depChain)
 
 		assert.False(t, hasCycle, "Expected no cycle detected")
 		assert.Nil(t, updatedChain, "Expected nil cycle path")
@@ -285,7 +285,7 @@ func TestWalkDependencies(t *testing.T) {
 			"Deployment/test-ns/test-dep",
 		}
 
-		hasCycle, cyclePath, err := reconciler.walkDependencies(ctx, target, sourceID, traversalPath)
+		hasCycle, cyclePath, err := reconciler.detectCycle(ctx, target, sourceID, traversalPath)
 
 		assert.True(t, hasCycle, "Expected an indirect cycle to be detected")
 
@@ -337,7 +337,7 @@ func TestWalkDependencies(t *testing.T) {
 		sourceID := fmt.Sprintf("Deployment/%s/%s", depA.GetNamespace(), depA.GetName())
 		traversalPath := []string{}
 
-		hasCycle, cyclePath, err := reconciler.walkDependencies(ctx, target, sourceID, traversalPath)
+		hasCycle, cyclePath, err := reconciler.detectCycle(ctx, target, sourceID, traversalPath)
 
 		assert.False(t, hasCycle, "Expected no cycle detected")
 		assert.Nil(t, cyclePath, "Expected nil cycle path")
@@ -389,7 +389,7 @@ func TestWalkDependencies(t *testing.T) {
 		sourceID := fmt.Sprintf("Deployment/%s/%s", depA.GetNamespace(), depA.GetName())
 		traversalPath := []string{}
 
-		hasCycle, cyclePath, err := reconciler.walkDependencies(ctx, target, sourceID, traversalPath)
+		hasCycle, cyclePath, err := reconciler.detectCycle(ctx, target, sourceID, traversalPath)
 
 		assert.False(t, hasCycle, "Expected no cycle detected")
 		assert.Nil(t, cyclePath, "Expected nil cycle path")

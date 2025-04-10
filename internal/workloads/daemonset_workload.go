@@ -23,6 +23,7 @@ import (
 	"github.com/thurgauerkb/cascader/internal/utils"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -35,6 +36,10 @@ func (w *DaemonSetWorkload) Resource() client.Object { return w.DaemonSet }
 func (w *DaemonSetWorkload) Kind() kinds.Kind        { return kinds.DaemonSetKind }
 func (w *DaemonSetWorkload) ID() string {
 	return utils.GenerateID(w.Kind(), w.DaemonSet.GetNamespace(), w.DaemonSet.GetName())
+}
+
+func (w *DaemonSetWorkload) PodTemplateSpec() *corev1.PodTemplateSpec {
+	return &w.DaemonSet.Spec.Template
 }
 
 // Stable checks if the DaemonSet is stable based on its replica status.

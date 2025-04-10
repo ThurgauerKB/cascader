@@ -74,8 +74,8 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	// Configure HTTP/2 settings
 	tlsOpts := []func(*tls.Config){}
 	if !cfg.EnableHTTP2 {
+		setupLog.Info("disabling HTTP/2 for compatibility")
 		tlsOpts = append(tlsOpts, func(c *tls.Config) {
-			setupLog.Info("Disabling HTTP/2 for compatibility")
 			c.NextProtos = []string{"http/1.1"}
 		})
 	}
@@ -122,12 +122,14 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	} else {
 		setupLog.Info("namespace scope", "mode", "namespaced", "namespaces", cfg.WatchNamespaces)
 	}
+
 	// Validate annotation uniqueness
 	configuredAnnotations := map[string]string{
-		"Deployment":   cfg.DeploymentAnnotation,
-		"StatefulSet":  cfg.StatefulSetAnnotation,
-		"DaemonSet":    cfg.DaemonSetAnnotation,
-		"RequeueAfter": cfg.RequeueAfterAnnotation,
+		"DaemonSet":           cfg.DaemonSetAnnotation,
+		"Deployment":          cfg.DeploymentAnnotation,
+		"StatefulSet":         cfg.StatefulSetAnnotation,
+		"LastObservedRestart": cfg.LastObservedRestartAnnotation,
+		"RequeueAfter":        cfg.RequeueAfterAnnotation,
 	}
 	if err := utils.UniqueAnnotations(configuredAnnotations); err != nil {
 		return fmt.Errorf("annotation values must be unique: %w", err)
@@ -138,48 +140,51 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 
 	// Define resource annotations with their kinds
 	annotationKindMap := kinds.AnnotationKindMap{
+		cfg.DaemonSetAnnotation:   kinds.DaemonSetKind,
 		cfg.DeploymentAnnotation:  kinds.DeploymentKind,
 		cfg.StatefulSetAnnotation: kinds.StatefulSetKind,
-		cfg.DaemonSetAnnotation:   kinds.DaemonSetKind,
 	}
 
-	// Set up DeploymentReconciler
+	// Setup Deployment controller
 	if err := (&controller.DeploymentReconciler{
 		BaseReconciler: controller.BaseReconciler{
-			Logger:                 &logger,
-			KubeClient:             mgr.GetClient(),
-			Recorder:               mgr.GetEventRecorderFor("deployment-controller"),
-			AnnotationKindMap:      annotationKindMap,
-			RequeueAfterAnnotation: cfg.RequeueAfterAnnotation,
-			RequeueAfterDefault:    cfg.RequeueAfterDefault,
+			Logger:                        &logger,
+			KubeClient:                    mgr.GetClient(),
+			Recorder:                      mgr.GetEventRecorderFor("deployment-controller"),
+			AnnotationKindMap:             annotationKindMap,
+			LastObservedRestartAnnotation: cfg.LastObservedRestartAnnotation,
+			RequeueAfterAnnotation:        cfg.RequeueAfterAnnotation,
+			RequeueAfterDefault:           cfg.RequeueAfterDefault,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create Deployment controller: %w", err)
 	}
 
-	// Set up StatefulSetReconciler
+	// Setup StatefulSet controller
 	if err := (&controller.StatefulSetReconciler{
 		BaseReconciler: controller.BaseReconciler{
-			Logger:                 &logger,
-			KubeClient:             mgr.GetClient(),
-			Recorder:               mgr.GetEventRecorderFor("statefulset-controller"),
-			AnnotationKindMap:      annotationKindMap,
-			RequeueAfterAnnotation: cfg.RequeueAfterAnnotation,
-			RequeueAfterDefault:    cfg.RequeueAfterDefault,
+			Logger:                        &logger,
+			KubeClient:                    mgr.GetClient(),
+			Recorder:                      mgr.GetEventRecorderFor("statefulset-controller"),
+			AnnotationKindMap:             annotationKindMap,
+			LastObservedRestartAnnotation: cfg.LastObservedRestartAnnotation,
+			RequeueAfterAnnotation:        cfg.RequeueAfterAnnotation,
+			RequeueAfterDefault:           cfg.RequeueAfterDefault,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create StatefulSet controller: %w", err)
 	}
 
-	// Set up DaemonSetReconciler
+	// Setup DaemonSet controller
 	if err := (&controller.DaemonSetReconciler{
 		BaseReconciler: controller.BaseReconciler{
-			Logger:                 &logger,
-			KubeClient:             mgr.GetClient(),
-			Recorder:               mgr.GetEventRecorderFor("daemonset-controller"),
-			AnnotationKindMap:      annotationKindMap,
-			RequeueAfterAnnotation: cfg.RequeueAfterAnnotation,
-			RequeueAfterDefault:    cfg.RequeueAfterDefault,
+			Logger:                        &logger,
+			KubeClient:                    mgr.GetClient(),
+			Recorder:                      mgr.GetEventRecorderFor("daemonset-controller"),
+			AnnotationKindMap:             annotationKindMap,
+			LastObservedRestartAnnotation: cfg.LastObservedRestartAnnotation,
+			RequeueAfterAnnotation:        cfg.RequeueAfterAnnotation,
+			RequeueAfterDefault:           cfg.RequeueAfterDefault,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create DaemonSet controller: %w", err)

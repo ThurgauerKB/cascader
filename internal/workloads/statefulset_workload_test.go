@@ -87,6 +87,28 @@ func TestStatefulSetWorkload_Methosts(t *testing.T) {
 
 		assert.Equal(t, "StatefulSet/default/test-statefulset", stsw.ID(), "GetID should return the StatefulSet/default/test-statefulset name")
 	})
+
+	t.Run("Get StatefulSet PodTemplateSpec", func(t *testing.T) {
+		t.Parallel()
+
+		ds := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-statefulset",
+				Namespace: "default",
+			},
+		}
+		ds.GetObjectKind().SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "apps",
+			Version: "v1",
+			Kind:    "StatefulSet",
+		})
+
+		annotations := map[string]string{"test": "cascader"}
+		ds.Spec.Template.SetAnnotations(annotations)
+		dsw := StatefulSetWorkload{StatefulSet: ds}
+
+		assert.Equal(t, annotations, dsw.PodTemplateSpec().GetAnnotations(), "GetPodTemplateSpec should return the StatefulSet PodTemplateSpec")
+	})
 }
 
 func TestStatefulSetWorkload_IsStable(t *testing.T) {

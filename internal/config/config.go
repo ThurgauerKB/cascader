@@ -26,10 +26,11 @@ import (
 )
 
 const (
-	deploymentAnnotation   string = "cascader.tkb.ch/deployment"
-	statefulSetAnnotation  string = "cascader.tkb.ch/statefulset"
-	daemonSetAnnotation    string = "cascader.tkb.ch/daemonset"
-	requeueAfterAnnotation string = "cascader.tkb.ch/requeue-after"
+	daemonSetAnnotation           string = "cascader.tkb.ch/daemonset"
+	deploymentAnnotation          string = "cascader.tkb.ch/deployment"
+	statefulSetAnnotation         string = "cascader.tkb.ch/statefulset"
+	lastObservedRestartAnnotation string = "cascader.tkb.ch/last-observed-restart"
+	requeueAfterAnnotation        string = "cascader.tkb.ch/requeue-after"
 )
 
 // HelpError represents a special error type to indicate that help was requested.
@@ -50,21 +51,22 @@ func (e *HelpError) Is(target error) bool {
 
 // Config holds all configuration options for the application.
 type Config struct {
-	WatchNamespaces        []string      // Namespaces to watch
-	MetricsAddr            string        // Address for the metrics server
-	LeaderElection         bool          // Enable leader election
-	ProbeAddr              string        // Address for health and readiness probes
-	SecureMetrics          bool          // Serve metrics over HTTPS
-	EnableHTTP2            bool          // Enable HTTP/2 for servers
-	DeploymentAnnotation   string        // Annotation key for monitored Deployments
-	StatefulSetAnnotation  string        // Annotation key for monitored StatefulSets
-	DaemonSetAnnotation    string        // Annotation key for monitored DaemonSets
-	RequeueAfterAnnotation string        // Annotation key for requeue interval
-	RequeueAfterDefault    time.Duration // Default requeue interval
-	EnableMetrics          bool          // Enable or disable metrics
-	LogEncoder             string        // Log format: "json" or "console"
-	LogStacktraceLevel     string        // Stacktrace log level
-	LogDev                 bool          // Enable development logging mode
+	WatchNamespaces               []string      // Namespaces to watch
+	MetricsAddr                   string        // Address for the metrics server
+	LeaderElection                bool          // Enable leader election
+	ProbeAddr                     string        // Address for health and readiness probes
+	SecureMetrics                 bool          // Serve metrics over HTTPS
+	EnableHTTP2                   bool          // Enable HTTP/2 for servers
+	DeploymentAnnotation          string        // Annotation key for monitored Deployments
+	StatefulSetAnnotation         string        // Annotation key for monitored StatefulSets
+	DaemonSetAnnotation           string        // Annotation key for monitored DaemonSets
+	LastObservedRestartAnnotation string        // Annotation key for last observed restart
+	RequeueAfterAnnotation        string        // Annotation key for requeue interval
+	RequeueAfterDefault           time.Duration // Default requeue interval
+	EnableMetrics                 bool          // Enable or disable metrics
+	LogEncoder                    string        // Log format: "json" or "console"
+	LogStacktraceLevel            string        // Stacktrace log level
+	LogDev                        bool          // Enable development logging mode
 }
 
 // ParseArgs parses CLI arguments into a Config struct.
@@ -78,6 +80,7 @@ func ParseArgs(args []string, out io.Writer, version string) (Config, error) {
 	fs.StringVar(&cfg.DeploymentAnnotation, "deployment-annotation", deploymentAnnotation, "Annotation key for monitored Deployments")
 	fs.StringVar(&cfg.StatefulSetAnnotation, "statefulset-annotation", statefulSetAnnotation, "Annotation key for monitored StatefulSets")
 	fs.StringVar(&cfg.DaemonSetAnnotation, "daemonset-annotation", daemonSetAnnotation, "Annotation key for monitored DaemonSets")
+	fs.StringVar(&cfg.LastObservedRestartAnnotation, "last-observed-restart-annotation", lastObservedRestartAnnotation, "Annotation key for last observed restart")
 	fs.StringVar(&cfg.RequeueAfterAnnotation, "requeue-after-annotation", requeueAfterAnnotation, "Annotation key for requeue interval override")
 	fs.DurationVar(&cfg.RequeueAfterDefault, "requeue-after-default", 5*time.Second, "Default requeue interval")
 

@@ -86,6 +86,28 @@ func TestDaemonSetWorkload_Methods(t *testing.T) {
 
 		assert.Equal(t, "DaemonSet/default/test-daemonset", dsw.ID(), "GetID should return the DaemonSet/default/test-daemonset name")
 	})
+
+	t.Run("Get DaemonSet PodTemplateSpec", func(t *testing.T) {
+		t.Parallel()
+
+		ds := &appsv1.DaemonSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-daemonset",
+				Namespace: "default",
+			},
+		}
+		ds.GetObjectKind().SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "apps",
+			Version: "v1",
+			Kind:    "DaemonSet",
+		})
+
+		annotations := map[string]string{"test": "cascader"}
+		ds.Spec.Template.SetAnnotations(annotations)
+		dsw := DaemonSetWorkload{DaemonSet: ds}
+
+		assert.Equal(t, annotations, dsw.PodTemplateSpec().GetAnnotations(), "GetPodTemplateSpec should return the DaemonSet PodTemplateSpec")
+	})
 }
 
 func TestDaemonSetWorkload_IsStable(t *testing.T) {

@@ -19,6 +19,7 @@ package controller
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/thurgauerkb/cascader/internal/kinds"
 	"github.com/thurgauerkb/cascader/internal/targets"
 	"github.com/thurgauerkb/cascader/internal/testutils"
+	"github.com/thurgauerkb/cascader/internal/utils"
 	"github.com/thurgauerkb/cascader/internal/workloads"
 
 	"github.com/stretchr/testify/assert"
@@ -53,11 +55,12 @@ const (
 func createBaseReconciler(objects ...client.Object) *BaseReconciler {
 	fakeClient := fake.NewClientBuilder().WithObjects(objects...).Build()
 	return &BaseReconciler{
-		Logger:                 &logr.Logger{},
-		KubeClient:             fakeClient,
-		Recorder:               record.NewFakeRecorder(10),
-		RequeueAfterAnnotation: "cascader.tkb.ch/requeueAfter",
-		RequeueAfterDefault:    defaultRequeuAfter,
+		Logger:                        &logr.Logger{},
+		KubeClient:                    fakeClient,
+		Recorder:                      record.NewFakeRecorder(10),
+		LastObservedRestartAnnotation: "cascader.tkb.ch/last-observed-restart",
+		RequeueAfterAnnotation:        "cascader.tkb.ch/requeueAfter",
+		RequeueAfterDefault:           defaultRequeuAfter,
 		AnnotationKindMap: kinds.AnnotationKindMap{
 			"cascader.tkb.ch/deployment":  kinds.DeploymentKind,
 			"cascader.tkb.ch/statefulset": kinds.StatefulSetKind,
@@ -71,6 +74,8 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 
 	scheme := runtime.NewScheme()
 	_ = appsv1.AddToScheme(scheme)
+
+	restartedAt := "2024-04-03T12:00:00Z"
 
 	t.Run("Invalid Workload Kind", func(t *testing.T) {
 		t.Parallel()
@@ -357,6 +362,13 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 			},
 			Spec: appsv1.DeploymentSpec{
 				Replicas: testutils.Int32Ptr(4),
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							utils.RestartedAtKey: restartedAt,
+						},
+					},
+				},
 			},
 		}
 
@@ -391,9 +403,10 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		result, err := reconciler.ReconcileWorkload(context.Background(), obj)
 		assert.NoError(t, err, "Expected no error on successful reconciliation")
 		expectedResult := ctrl.Result{}
-		assert.Equal(t, expectedResult, result, "Expected successful result with default requeue duration")
+		assert.Equal(t, expectedResult, result, "Expected successful result")
 
 		logOutput := logBuffer.String()
+		assert.Contains(t, logOutput, "Restart detected", "Expected log to contain message about restart detected")
 		assert.Contains(t, logOutput, "Workload is stable", "Expected log to contain message about stable workload")
 		assert.Contains(t, logOutput, successfullTriggerTargetMsg, "Expected log to contain message about successful reload")
 		assert.Contains(t, logOutput, successfullTriggerAllTargetsMsg, "Expected log to contain message about successful reload")
@@ -528,6 +541,101 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		assert.Contains(t, logOutput, workloadStableMsg, "Expected log to contain message about stable workload")
 		assert.Contains(t, logOutput, successfullTriggerTargetMsg, "Expected log to contain message about successful reload")
 		assert.Contains(t, logOutput, failedTriggerTargetMsg, "Expected log to contain failure message for notfound-deployment")
+	})
+
+	t.Run("Error patching workload (LastObservedRestart)", func(t *testing.T) {
+		t.Parallel()
+
+		obj := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "notfound-deployment",
+				Namespace: "test-namespace",
+				Annotations: map[string]string{
+					"cascader.tkb.ch/deployment": "test-namespace/another-deployment",
+				},
+			},
+			Status: appsv1.DeploymentStatus{
+				AvailableReplicas:  4,
+				ReadyReplicas:      4,
+				UpdatedReplicas:    4,
+				ObservedGeneration: 5,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Replicas: testutils.Int32Ptr(4),
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							utils.RestartedAtKey: restartedAt,
+						},
+					},
+				},
+			},
+		}
+
+		// Create fake client with objects
+		baseFakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(obj).Build()
+		fakeClient := &testutils.MockClientWithError{
+			Client:        baseFakeClient,
+			PatchErrorFor: testutils.NamedError{Name: "notfound-deployment", Namespace: "test-namespace"},
+		}
+
+		// Capture logs into a string buffer
+		var logBuffer bytes.Buffer
+		logger := zap.New(zap.WriteTo(&logBuffer))
+
+		reconciler := createBaseReconciler()
+		reconciler.Logger = &logger
+		reconciler.KubeClient = fakeClient
+
+		result, err := reconciler.ReconcileWorkload(context.Background(), obj)
+		assert.Error(t, err)
+		expectedResult := ctrl.Result{}
+		assert.Equal(t, expectedResult, result, "Expected successful result")
+		assert.EqualError(t, err, fmt.Sprintf("failed to patch restart annotation: failed to patch annotation \"cascader.tkb.ch/last-observed-restart\"=%q: simulated patch error", restartedAt))
+	})
+}
+
+func TestPatchRestartMarker(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	_ = appsv1.AddToScheme(scheme)
+	restartedAt := "2024-04-03T12:00:00Z"
+
+	t.Run("Successful patch", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+
+		dep := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-deployment",
+				Namespace: "default",
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							utils.RestartedAtKey: restartedAt,
+						},
+					},
+				},
+			},
+		}
+
+		reconciler := createBaseReconciler(dep)
+
+		workload, err := workloads.NewWorkload(dep)
+		assert.NoError(t, err)
+
+		err = reconciler.patchRestartMarker(ctx, workload, restartedAt)
+		assert.NoError(t, err)
+
+		// Confirm annotation was set
+		var updated appsv1.Deployment
+		err = reconciler.KubeClient.Get(ctx, client.ObjectKeyFromObject(dep), &updated)
+		assert.NoError(t, err)
+		observed := updated.Spec.Template.Annotations[reconciler.LastObservedRestartAnnotation]
+		assert.NotEmpty(t, observed)
 	})
 }
 
@@ -771,7 +879,7 @@ func TestTriggerReloads(t *testing.T) {
 	})
 }
 
-func TestGetRequeueDuration(t *testing.T) {
+func TestRequeueDurationFor(t *testing.T) {
 	t.Parallel()
 
 	reconciler := createBaseReconciler()
@@ -786,7 +894,7 @@ func TestGetRequeueDuration(t *testing.T) {
 			},
 		}
 
-		duration, err := reconciler.getRequeueDuration(obj)
+		duration, err := reconciler.requeueDurationFor(obj)
 		assert.NoError(t, err)
 		assert.Equal(t, defaultRequeuAfter, duration, "Expected duration to be 2 seconds when annotations are missing")
 	})
@@ -804,7 +912,7 @@ func TestGetRequeueDuration(t *testing.T) {
 			},
 		}
 
-		duration, err := reconciler.getRequeueDuration(obj)
+		duration, err := reconciler.requeueDurationFor(obj)
 		assert.NoError(t, err)
 		assert.Equal(t, defaultRequeuAfter, duration, "Expected duration to be 2 seconds when annotation is not found")
 	})
@@ -822,7 +930,7 @@ func TestGetRequeueDuration(t *testing.T) {
 			},
 		}
 
-		duration, err := reconciler.getRequeueDuration(obj)
+		duration, err := reconciler.requeueDurationFor(obj)
 		assert.NoError(t, err)
 		assert.Equal(t, defaultRequeuAfter, duration, "Expected duration to be 2 seconds when annotation value is empty")
 	})
@@ -840,7 +948,7 @@ func TestGetRequeueDuration(t *testing.T) {
 			},
 		}
 
-		duration, err := reconciler.getRequeueDuration(obj)
+		duration, err := reconciler.requeueDurationFor(obj)
 		assert.Error(t, err)
 		assert.EqualError(t, err, "invalid annotation: time: invalid duration \"invalid-duration\"")
 		assert.Equal(t, defaultRequeuAfter, duration, "Expected duration to be 2 seconds on parsing error")
@@ -859,7 +967,7 @@ func TestGetRequeueDuration(t *testing.T) {
 			},
 		}
 
-		duration, err := reconciler.getRequeueDuration(obj)
+		duration, err := reconciler.requeueDurationFor(obj)
 		assert.NoError(t, err)
 		assert.Equal(t, defaultRequeuAfter, duration, "Expected duration to be 10s")
 	})

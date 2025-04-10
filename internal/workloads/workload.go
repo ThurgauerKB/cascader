@@ -22,15 +22,17 @@ import (
 	"github.com/thurgauerkb/cascader/internal/kinds"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Workload defines the interface for Kubernetes workloads, providing methods for stability checks and metadata access.
 type Workload interface {
-	Resource() client.Object                // Resource returns the underlying Kubernetes object.
-	Kind() kinds.Kind                       // Kind returns the kind of the workload.
-	ID() string                             // ID returns a unique identifier for the workload in the format Kind/namespace/name.
-	Stable() (isStable bool, reason string) // Stable checks if the workload is in a stable state.
+	Resource() client.Object                  // Resource returns the underlying Kubernetes object.
+	Kind() kinds.Kind                         // Kind returns the kind of the workload.
+	ID() string                               // ID returns a unique identifier for the workload in the format Kind/namespace/name.
+	Stable() (isStable bool, reason string)   // Stable checks if the workload is in a stable state.
+	PodTemplateSpec() *corev1.PodTemplateSpec // PodTemplateSpec returns the PodTemplateSpec of the workload.
 }
 
 // NewWorkload creates a Workload implementation for the given Kubernetes object.

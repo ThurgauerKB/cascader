@@ -26,6 +26,7 @@ import (
 	"github.com/thurgauerkb/cascader/internal/kinds"
 	"github.com/thurgauerkb/cascader/internal/metrics"
 	"github.com/thurgauerkb/cascader/internal/targets"
+	"github.com/thurgauerkb/cascader/internal/utils"
 	"github.com/thurgauerkb/cascader/internal/workloads"
 
 	"github.com/go-logr/logr"
@@ -37,12 +38,13 @@ import (
 
 // BaseReconciler contains shared fields for reconcilers.
 type BaseReconciler struct {
-	KubeClient             client.Client           // KubeClient is the Kubernetes API client.
-	Logger                 *logr.Logger            // Logger is used for logging reconciliation events.
-	Recorder               record.EventRecorder    // Recorder records Kubernetes events.
-	AnnotationKindMap      kinds.AnnotationKindMap // AnnotationKindMap maps annotation keys to workload kinds.
-	RequeueAfterAnnotation string                  // RequeueAfterAnnotation is the annotation key for requeue intervals.
-	RequeueAfterDefault    time.Duration           // RequeueAfterDefault is the default duration for requeuing.
+	KubeClient                    client.Client           // KubeClient is the Kubernetes API client.
+	Logger                        *logr.Logger            // Logger is used for logging reconciliation events.
+	Recorder                      record.EventRecorder    // Recorder records Kubernetes events.
+	AnnotationKindMap             kinds.AnnotationKindMap // AnnotationKindMap maps annotation keys to workload kinds.
+	LastObservedRestartAnnotation string                  // LastObservedRestartAnnotation is the annotation key for last observed restarts.
+	RequeueAfterAnnotation        string                  // RequeueAfterAnnotation is the annotation key for requeue intervals.
+	RequeueAfterDefault           time.Duration           // RequeueAfterDefault is the default duration for requeuing.
 }
 
 // ReconcileWorkload handles the core reconciliation logic for any workload type.
@@ -61,6 +63,15 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 
 	log := b.Logger.WithValues("workloadID", id) // Append workload ID to logger context
 
+	// Check if the workload has been restarted since the last reconciliation.
+	if updated, restartedAt := restartMarkerUpdated(workload.PodTemplateSpec(), utils.RestartedAtKey, b.LastObservedRestartAnnotation); updated {
+		log.Info("Restart detected", "restartedAt", restartedAt)
+
+		if err := b.patchRestartMarker(ctx, workload, restartedAt); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to patch restart annotation: %w", err)
+		}
+	}
+
 	// Extract dependent targets from workload annotations.
 	targets, err := b.extractTargets(ctx, res)
 	if err != nil {
@@ -73,7 +84,7 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	metrics.Workloads.WithLabelValues(ns, name, kind).Set(float64(len(targets)))
 
 	// Determine requeue interval.
-	dur, err := b.getRequeueDuration(res)
+	dur, err := b.requeueDurationFor(res)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Invalid requeue annotation, using default: %s", b.RequeueAfterDefault))
 	}
@@ -82,7 +93,7 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	if err := b.checkCycle(ctx, id, targets); err != nil {
 		if cycleErr, ok := err.(*CycleError); ok {
 			metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(1)
-			b.Recorder.Eventf(res, corev1.EventTypeWarning, "CycleDetected", "Dependency cycle detected: %s", cycleErr.DepChain)
+			b.Recorder.Eventf(res, corev1.EventTypeWarning, "CycleDetected", "Dependency cycle detected: %s", cycleErr.Path)
 		}
 		return ctrl.Result{}, fmt.Errorf("dependency cycle detected: %w", err)
 	}
@@ -108,17 +119,33 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	return ctrl.Result{}, nil
 }
 
+// patchRestartMarker updates the restart annotation in the workload's PodTemplateSpec.
+func (b *BaseReconciler) patchRestartMarker(
+	ctx context.Context,
+	workload workloads.Workload,
+	restartedAt string,
+) error {
+	return utils.PatchPodTemplateAnnotation(
+		ctx,
+		b.KubeClient,
+		workload.Resource(),
+		workload.PodTemplateSpec(),
+		b.LastObservedRestartAnnotation,
+		restartedAt,
+	)
+}
+
 // extractTargets creates targets for a workload based on annotations.
 func (b *BaseReconciler) extractTargets(ctx context.Context, source client.Object) ([]targets.Target, error) {
 	var created []targets.Target
 
-	anns := source.GetAnnotations()
-	if anns == nil {
+	annotations := source.GetAnnotations()
+	if annotations == nil {
 		return created, nil
 	}
 
-	for ann, kind := range b.AnnotationKindMap {
-		val, exists := anns[ann]
+	for key, kind := range b.AnnotationKindMap {
+		val, exists := annotations[key]
 		if !exists {
 			continue
 		}
@@ -141,14 +168,14 @@ func (b *BaseReconciler) extractTargets(ctx context.Context, source client.Objec
 	return created, nil
 }
 
-// getRequeueDuration determines requeue interval from annotations or falls back to default.
-func (b *BaseReconciler) getRequeueDuration(obj client.Object) (time.Duration, error) {
-	anns := obj.GetAnnotations()
-	if anns == nil {
+// requeueDurationFor determines requeue interval from annotations or falls back to default.
+func (b *BaseReconciler) requeueDurationFor(obj client.Object) (time.Duration, error) {
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
 		return b.RequeueAfterDefault, nil
 	}
 
-	val, exists := anns[b.RequeueAfterAnnotation]
+	val, exists := annotations[b.RequeueAfterAnnotation]
 	if !exists || strings.TrimSpace(val) == "" {
 		return b.RequeueAfterDefault, nil
 	}

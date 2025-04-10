@@ -83,3 +83,11 @@ func ContainsNotLogs(expectedLog string, timeout, interval time.Duration) {
 		return strings.Contains(LogBuffer.String(), expectedLog)
 	}, timeout, interval).Should(BeFalse(), fmt.Sprintf("Expected log should not be found: %s", expectedLog))
 }
+
+// CountLogOccurrences checks how many times the expected string appears in the log buffer.
+func CountLogOccurrences(expectedText string, amount int, timeout, interval time.Duration) {
+	Eventually(func() bool {
+		content := LogBuffer.String()
+		return strings.Count(content, expectedText) == amount
+	}, timeout, interval).Should(BeTrue(), "Expected text not found")
+}
