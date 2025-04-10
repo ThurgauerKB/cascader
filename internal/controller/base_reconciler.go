@@ -93,7 +93,7 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	if err := b.checkCycle(ctx, id, targets); err != nil {
 		if cycleErr, ok := err.(*CycleError); ok {
 			metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(1)
-			b.Recorder.Eventf(res, corev1.EventTypeWarning, "CycleDetected", "Dependency cycle detected: %s", cycleErr.DepChain)
+			b.Recorder.Eventf(res, corev1.EventTypeWarning, "CycleDetected", "Dependency cycle detected: %s", cycleErr.Path)
 		}
 		return ctrl.Result{}, fmt.Errorf("dependency cycle detected: %w", err)
 	}
@@ -139,13 +139,13 @@ func (b *BaseReconciler) patchRestartMarker(
 func (b *BaseReconciler) extractTargets(ctx context.Context, source client.Object) ([]targets.Target, error) {
 	var created []targets.Target
 
-	anns := source.GetAnnotations()
-	if anns == nil {
+	annotations := source.GetAnnotations()
+	if annotations == nil {
 		return created, nil
 	}
 
-	for ann, kind := range b.AnnotationKindMap {
-		val, exists := anns[ann]
+	for key, kind := range b.AnnotationKindMap {
+		val, exists := annotations[key]
 		if !exists {
 			continue
 		}
@@ -168,14 +168,14 @@ func (b *BaseReconciler) extractTargets(ctx context.Context, source client.Objec
 	return created, nil
 }
 
-// getRequeueDuration determines requeue interval from annotations or falls back to default.
+// requeueDurationFor determines requeue interval from annotations or falls back to default.
 func (b *BaseReconciler) requeueDurationFor(obj client.Object) (time.Duration, error) {
-	anns := obj.GetAnnotations()
-	if anns == nil {
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
 		return b.RequeueAfterDefault, nil
 	}
 
-	val, exists := anns[b.RequeueAfterAnnotation]
+	val, exists := annotations[b.RequeueAfterAnnotation]
 	if !exists || strings.TrimSpace(val) == "" {
 		return b.RequeueAfterDefault, nil
 	}

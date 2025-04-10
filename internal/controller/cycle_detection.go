@@ -43,15 +43,15 @@ const (
 type CycleError struct {
 	Kind     CycleKind // Type of the cycle: direct or indirect
 	SourceID string    // Identifier of the resource initiating the detection (format: Kind/Namespace/Name)
-	DepChain string    // Sequence of resources forming the cycle (e.g., "A -> B -> A")
+	Path     string    // Sequence of resources forming the cycle (e.g., "A -> B -> A")
 }
 
 // Error returns a descriptive error message for the CycleError.
 func (e *CycleError) Error() string {
-	return fmt.Sprintf("%s cycle detected: adding dependency from %s creates a cycle: %s", e.Kind, e.SourceID, e.DepChain)
+	return fmt.Sprintf("%s cycle detected: adding dependency from %s creates a cycle: %s", e.Kind, e.SourceID, e.Path)
 }
 
-// CheckCycle checks for circular dependencies among targets.
+// checkCycle checks for circular dependencies among targets.
 // Returns an error if a cycle is found.
 func (b *BaseReconciler) checkCycle(ctx context.Context, srcID string, targets []targets.Target) error {
 	for _, target := range targets {
@@ -60,21 +60,21 @@ func (b *BaseReconciler) checkCycle(ctx context.Context, srcID string, targets [
 			return &CycleError{
 				Kind:     DirectKind,
 				SourceID: srcID,
-				DepChain: target.ID(),
+				Path:     target.ID(),
 			}
 		}
 
-		// Recursively traverse dependencies, tracking the dependency chain
-		hasCycle, depChain, err := b.walkDependencies(ctx, target, srcID, []string{srcID})
+		// Recursively detect cycles
+		found, cycle, err := b.detectCycle(ctx, target, srcID, []string{srcID})
 		if err != nil {
 			return fmt.Errorf("dependency cycle check failed: %w", err)
 		}
 
-		if hasCycle {
+		if found {
 			return &CycleError{
 				Kind:     IndirectKind,
 				SourceID: srcID,
-				DepChain: strings.Join(depChain, " -> "),
+				Path:     strings.Join(cycle, " -> "),
 			}
 		}
 	}
@@ -82,46 +82,43 @@ func (b *BaseReconciler) checkCycle(ctx context.Context, srcID string, targets [
 	return nil
 }
 
-// WalkDependencies recursively walks dependencies to check for cycles.
-// Returns true if a cycle is found, along with the updated dependency chain.
-func (b *BaseReconciler) walkDependencies(ctx context.Context, target targets.Target, srcID string, depChain []string) (hasCycle bool, updatedChain []string, err error) {
+// detectCycle recursively walks dependencies to detect cycles.
+// Returns true if a cycle is found, along with the full path forming the cycle.
+func (b *BaseReconciler) detectCycle(ctx context.Context, target targets.Target, srcID string, path []string) (found bool, cycle []string, err error) {
 	targetID := target.ID()
 
-	// Detect if the target has already been visited (cycle detected)
-	if slices.Contains(depChain, targetID) {
-		return true, append(depChain, targetID), nil
+	// Detect if target already in path → cycle found
+	if slices.Contains(path, targetID) {
+		return true, append(path, targetID), nil
 	}
 
-	depChain = append(depChain, targetID)
+	path = append(path, targetID)
 
-	// Fetch the target resource from the cluster
+	// Fetch target resource
 	res := target.Resource()
 	if err := b.KubeClient.Get(ctx, client.ObjectKey{Namespace: target.Namespace(), Name: target.Name()}, res); err != nil {
 		return false, nil, fmt.Errorf("failed to fetch resource %s: %w", targetID, err)
 	}
 
-	// Extract dependencies from the target object
+	// Extract dependencies from resource
 	dependencies, err := b.extractTargets(ctx, res)
 	if err != nil {
 		return false, nil, fmt.Errorf("error extracting dependencies: %w", err)
 	}
 
-	// Recursively check each dependency
+	// Recursively check dependencies
 	for _, dependency := range dependencies {
-		depID := dependency.ID()
-
-		if depID == srcID {
-			// Cycle detected, append the source to complete the cycle path
-			return true, append(depChain, srcID), nil
+		if dependency.ID() == srcID {
+			// Cycle completed back to source
+			return true, append(path, srcID), nil
 		}
 
-		// Recursively check dependencies with the updated chain
-		hasCycle, updatedChain, err = b.walkDependencies(ctx, dependency, srcID, depChain)
+		found, cycle, err = b.detectCycle(ctx, dependency, srcID, path)
 		if err != nil {
-			return hasCycle, nil, err
+			return found, nil, err
 		}
-		if hasCycle {
-			return true, updatedChain, nil
+		if found {
+			return true, cycle, nil
 		}
 	}
 
