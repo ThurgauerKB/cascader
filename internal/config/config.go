@@ -26,11 +26,11 @@ import (
 )
 
 const (
+	daemonSetAnnotation           string = "cascader.tkb.ch/daemonset"
 	deploymentAnnotation          string = "cascader.tkb.ch/deployment"
 	statefulSetAnnotation         string = "cascader.tkb.ch/statefulset"
-	daemonSetAnnotation           string = "cascader.tkb.ch/daemonset"
-	requeueAfterAnnotation        string = "cascader.tkb.ch/requeue-after"
 	lastObservedRestartAnnotation string = "cascader.tkb.ch/last-observed-restart"
+	requeueAfterAnnotation        string = "cascader.tkb.ch/requeue-after"
 )
 
 // HelpError represents a special error type to indicate that help was requested.

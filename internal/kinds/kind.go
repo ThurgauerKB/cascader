@@ -23,9 +23,9 @@ type AnnotationKindMap map[string]Kind
 type Kind string
 
 const (
+	DaemonSetKind   Kind = "DaemonSet"   // Represents a Kubernetes DaemonSet resource.
 	DeploymentKind  Kind = "Deployment"  // Represents a Kubernetes Deployment resource.
 	StatefulSetKind Kind = "StatefulSet" // Represents a Kubernetes StatefulSet resource.
-	DaemonSetKind   Kind = "DaemonSet"   // Represents a Kubernetes DaemonSet resource.
 )
 
 // String converts the Kind to its string representation.

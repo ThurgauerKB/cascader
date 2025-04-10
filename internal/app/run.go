@@ -122,11 +122,12 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	} else {
 		setupLog.Info("namespace scope", "mode", "namespaced", "namespaces", cfg.WatchNamespaces)
 	}
+
 	// Validate annotation uniqueness
 	configuredAnnotations := map[string]string{
+		"DaemonSet":           cfg.DaemonSetAnnotation,
 		"Deployment":          cfg.DeploymentAnnotation,
 		"StatefulSet":         cfg.StatefulSetAnnotation,
-		"DaemonSet":           cfg.DaemonSetAnnotation,
 		"LastObservedRestart": cfg.LastObservedRestartAnnotation,
 		"RequeueAfter":        cfg.RequeueAfterAnnotation,
 	}
@@ -139,12 +140,12 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 
 	// Define resource annotations with their kinds
 	annotationKindMap := kinds.AnnotationKindMap{
+		cfg.DaemonSetAnnotation:   kinds.DaemonSetKind,
 		cfg.DeploymentAnnotation:  kinds.DeploymentKind,
 		cfg.StatefulSetAnnotation: kinds.StatefulSetKind,
-		cfg.DaemonSetAnnotation:   kinds.DaemonSetKind,
 	}
 
-	// Set up DeploymentReconciler
+	// Setup DaemonSet controller
 	if err := (&controller.DeploymentReconciler{
 		BaseReconciler: controller.BaseReconciler{
 			Logger:                        &logger,
@@ -159,7 +160,7 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 		return fmt.Errorf("unable to create Deployment controller: %w", err)
 	}
 
-	// Set up StatefulSetReconciler
+	// Setup StatefulSet controller
 	if err := (&controller.StatefulSetReconciler{
 		BaseReconciler: controller.BaseReconciler{
 			Logger:                        &logger,
@@ -174,7 +175,7 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 		return fmt.Errorf("unable to create StatefulSet controller: %w", err)
 	}
 
-	// Set up DaemonSetReconciler
+	// Setup DaemonSet controller
 	if err := (&controller.DaemonSetReconciler{
 		BaseReconciler: controller.BaseReconciler{
 			Logger:                        &logger,
