@@ -99,10 +99,7 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	}
 
 	// Create Cache Options
-	cacheOpts, err := utils.NewCacheOptions(ctx, kubeClient, cfg.WatchNamespaces, cfg.LabelSelector)
-	if err != nil {
-		return fmt.Errorf("failed to create cache options: %w", err)
-	}
+	cacheOpts := utils.ToCacheOptions(cfg.WatchNamespaces)
 
 	// Create and initialize the manager
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
