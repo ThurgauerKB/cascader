@@ -109,10 +109,11 @@ func (b *BaseReconciler) detectCycle(ctx context.Context, target targets.Target,
 	// Recursively check dependencies
 	for _, dependency := range dependencies {
 		if dependency.ID() == srcID {
-			// Cycle completed back to source
+			// Cycle detected, append the source to complete the cycle path
 			return true, append(path, srcID), nil
 		}
 
+		// Recursively check dependencies with the updated path
 		found, cycle, err = b.detectCycle(ctx, dependency, srcID, path)
 		if err != nil {
 			return found, nil, err
