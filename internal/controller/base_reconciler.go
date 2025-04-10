@@ -38,13 +38,13 @@ import (
 
 // BaseReconciler contains shared fields for reconcilers.
 type BaseReconciler struct {
-	KubeClient             client.Client           // KubeClient is the Kubernetes API client.
-	Logger                 *logr.Logger            // Logger is used for logging reconciliation events.
-	Recorder               record.EventRecorder    // Recorder records Kubernetes events.
-	AnnotationKindMap      kinds.AnnotationKindMap // AnnotationKindMap maps annotation keys to workload kinds.
-	LastObservedRestartKey string                  // LastObservedRestartKey is the annotation key for last observed restarts.
-	RequeueAfterAnnotation string                  // RequeueAfterAnnotation is the annotation key for requeue intervals.
-	RequeueAfterDefault    time.Duration           // RequeueAfterDefault is the default duration for requeuing.
+	KubeClient                    client.Client           // KubeClient is the Kubernetes API client.
+	Logger                        *logr.Logger            // Logger is used for logging reconciliation events.
+	Recorder                      record.EventRecorder    // Recorder records Kubernetes events.
+	AnnotationKindMap             kinds.AnnotationKindMap // AnnotationKindMap maps annotation keys to workload kinds.
+	LastObservedRestartAnnotation string                  // LastObservedRestartAnnotation is the annotation key for last observed restarts.
+	RequeueAfterAnnotation        string                  // RequeueAfterAnnotation is the annotation key for requeue intervals.
+	RequeueAfterDefault           time.Duration           // RequeueAfterDefault is the default duration for requeuing.
 }
 
 // ReconcileWorkload handles the core reconciliation logic for any workload type.
@@ -64,7 +64,7 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	log := b.Logger.WithValues("workloadID", id) // Append workload ID to logger context
 
 	// Check if the workload has been restarted since the last reconciliation.
-	if updated, restartedAt := restartMarkerUpdated(workload.PodTemplateSpec(), utils.RestartedAtKey, b.LastObservedRestartKey); updated {
+	if updated, restartedAt := restartMarkerUpdated(workload.PodTemplateSpec(), utils.RestartedAtKey, b.LastObservedRestartAnnotation); updated {
 		log.Info("Restart detected", "restartedAt", restartedAt)
 
 		if err := b.patchRestartMarker(ctx, workload, restartedAt); err != nil {
@@ -130,7 +130,7 @@ func (b *BaseReconciler) patchRestartMarker(
 		b.KubeClient,
 		workload.Resource(),
 		workload.PodTemplateSpec(),
-		b.LastObservedRestartKey,
+		b.LastObservedRestartAnnotation,
 		restartedAt,
 	)
 }

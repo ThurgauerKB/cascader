@@ -99,7 +99,10 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	}
 
 	// Create Cache Options
-	cacheOpts := utils.ToCacheOptions(cfg.WatchNamespaces)
+	cacheOpts, err := utils.NewCacheOptions(ctx, kubeClient, cfg.WatchNamespaces, cfg.LabelSelector)
+	if err != nil {
+		return fmt.Errorf("failed to create cache options: %w", err)
+	}
 
 	// Create and initialize the manager
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -127,7 +130,7 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 		"Deployment":          cfg.DeploymentAnnotation,
 		"StatefulSet":         cfg.StatefulSetAnnotation,
 		"DaemonSet":           cfg.DaemonSetAnnotation,
-		"LastObservedRestart": cfg.LastObservedRestartKey,
+		"LastObservedRestart": cfg.LastObservedRestartAnnotation,
 		"RequeueAfter":        cfg.RequeueAfterAnnotation,
 	}
 	if err := utils.UniqueAnnotations(configuredAnnotations); err != nil {
@@ -147,13 +150,13 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	// Set up DeploymentReconciler
 	if err := (&controller.DeploymentReconciler{
 		BaseReconciler: controller.BaseReconciler{
-			Logger:                 &logger,
-			KubeClient:             mgr.GetClient(),
-			Recorder:               mgr.GetEventRecorderFor("deployment-controller"),
-			AnnotationKindMap:      annotationKindMap,
-			LastObservedRestartKey: cfg.LastObservedRestartKey,
-			RequeueAfterAnnotation: cfg.RequeueAfterAnnotation,
-			RequeueAfterDefault:    cfg.RequeueAfterDefault,
+			Logger:                        &logger,
+			KubeClient:                    mgr.GetClient(),
+			Recorder:                      mgr.GetEventRecorderFor("deployment-controller"),
+			AnnotationKindMap:             annotationKindMap,
+			LastObservedRestartAnnotation: cfg.LastObservedRestartAnnotation,
+			RequeueAfterAnnotation:        cfg.RequeueAfterAnnotation,
+			RequeueAfterDefault:           cfg.RequeueAfterDefault,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create Deployment controller: %w", err)
@@ -162,13 +165,13 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	// Set up StatefulSetReconciler
 	if err := (&controller.StatefulSetReconciler{
 		BaseReconciler: controller.BaseReconciler{
-			Logger:                 &logger,
-			KubeClient:             mgr.GetClient(),
-			Recorder:               mgr.GetEventRecorderFor("statefulset-controller"),
-			AnnotationKindMap:      annotationKindMap,
-			LastObservedRestartKey: cfg.LastObservedRestartKey,
-			RequeueAfterAnnotation: cfg.RequeueAfterAnnotation,
-			RequeueAfterDefault:    cfg.RequeueAfterDefault,
+			Logger:                        &logger,
+			KubeClient:                    mgr.GetClient(),
+			Recorder:                      mgr.GetEventRecorderFor("statefulset-controller"),
+			AnnotationKindMap:             annotationKindMap,
+			LastObservedRestartAnnotation: cfg.LastObservedRestartAnnotation,
+			RequeueAfterAnnotation:        cfg.RequeueAfterAnnotation,
+			RequeueAfterDefault:           cfg.RequeueAfterDefault,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create StatefulSet controller: %w", err)
@@ -177,13 +180,13 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	// Set up DaemonSetReconciler
 	if err := (&controller.DaemonSetReconciler{
 		BaseReconciler: controller.BaseReconciler{
-			Logger:                 &logger,
-			KubeClient:             mgr.GetClient(),
-			Recorder:               mgr.GetEventRecorderFor("daemonset-controller"),
-			AnnotationKindMap:      annotationKindMap,
-			LastObservedRestartKey: cfg.LastObservedRestartKey,
-			RequeueAfterAnnotation: cfg.RequeueAfterAnnotation,
-			RequeueAfterDefault:    cfg.RequeueAfterDefault,
+			Logger:                        &logger,
+			KubeClient:                    mgr.GetClient(),
+			Recorder:                      mgr.GetEventRecorderFor("daemonset-controller"),
+			AnnotationKindMap:             annotationKindMap,
+			LastObservedRestartAnnotation: cfg.LastObservedRestartAnnotation,
+			RequeueAfterAnnotation:        cfg.RequeueAfterAnnotation,
+			RequeueAfterDefault:           cfg.RequeueAfterDefault,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create DaemonSet controller: %w", err)

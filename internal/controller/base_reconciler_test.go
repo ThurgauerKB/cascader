@@ -55,12 +55,12 @@ const (
 func createBaseReconciler(objects ...client.Object) *BaseReconciler {
 	fakeClient := fake.NewClientBuilder().WithObjects(objects...).Build()
 	return &BaseReconciler{
-		Logger:                 &logr.Logger{},
-		KubeClient:             fakeClient,
-		Recorder:               record.NewFakeRecorder(10),
-		LastObservedRestartKey: "cascader.tkb.ch/last-observed-restart",
-		RequeueAfterAnnotation: "cascader.tkb.ch/requeueAfter",
-		RequeueAfterDefault:    defaultRequeuAfter,
+		Logger:                        &logr.Logger{},
+		KubeClient:                    fakeClient,
+		Recorder:                      record.NewFakeRecorder(10),
+		LastObservedRestartAnnotation: "cascader.tkb.ch/last-observed-restart",
+		RequeueAfterAnnotation:        "cascader.tkb.ch/requeueAfter",
+		RequeueAfterDefault:           defaultRequeuAfter,
 		AnnotationKindMap: kinds.AnnotationKindMap{
 			"cascader.tkb.ch/deployment":  kinds.DeploymentKind,
 			"cascader.tkb.ch/statefulset": kinds.StatefulSetKind,
@@ -634,7 +634,7 @@ func TestPatchRestartMarker(t *testing.T) {
 		var updated appsv1.Deployment
 		err = reconciler.KubeClient.Get(ctx, client.ObjectKeyFromObject(dep), &updated)
 		assert.NoError(t, err)
-		observed := updated.Spec.Template.Annotations[reconciler.LastObservedRestartKey]
+		observed := updated.Spec.Template.Annotations[reconciler.LastObservedRestartAnnotation]
 		assert.NotEmpty(t, observed)
 	})
 }
