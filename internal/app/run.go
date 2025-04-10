@@ -74,8 +74,8 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	// Configure HTTP/2 settings
 	tlsOpts := []func(*tls.Config){}
 	if !cfg.EnableHTTP2 {
+		setupLog.Info("disabling HTTP/2 for compatibility")
 		tlsOpts = append(tlsOpts, func(c *tls.Config) {
-			setupLog.Info("Disabling HTTP/2 for compatibility")
 			c.NextProtos = []string{"http/1.1"}
 		})
 	}
@@ -145,7 +145,7 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 		cfg.StatefulSetAnnotation: kinds.StatefulSetKind,
 	}
 
-	// Setup DaemonSet controller
+	// Setup Deployment controller
 	if err := (&controller.DeploymentReconciler{
 		BaseReconciler: controller.BaseReconciler{
 			Logger:                        &logger,

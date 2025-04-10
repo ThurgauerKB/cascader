@@ -20,12 +20,11 @@ import (
 	"fmt"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
-
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 )
 
 const (
@@ -999,5 +998,35 @@ var _ = Describe("Operator watching multiple namespaces", func() {
 
 		By("Validating fetching resource error")
 		testutils.ContainsLogs(fmt.Sprintf("dependency cycle detected: dependency cycle check failed: failed to fetch resource %s: unable to get: %s/%s because of unknown namespace for the cache", obj2ID, nsIgnored, obj2Name), 10*time.Second, 1*time.Second)
+	})
+})
+
+var _ = Describe("Edge cases", func() {
+	AfterEach(func(ctx SpecContext) {
+		testutils.StopOperator()
+	})
+
+	It("Explicit enable HTTP2", func(ctx SpecContext) {
+		testutils.StartOperatorWithFlags([]string{
+			"--leader-elect=false",
+			"--health-probe-bind-address=:8085",
+			"--metrics-enabled=false",
+			"--enable-http2=true",
+		})
+
+		By("Validating logs")
+		testutils.ContainsNotLogs("disabling HTTP/2 for compatibility", 10*time.Second, 2*time.Second)
+	})
+
+	It("Explicit disable HTTP2", func(ctx SpecContext) {
+		testutils.StartOperatorWithFlags([]string{
+			"--leader-elect=false",
+			"--health-probe-bind-address=:8086",
+			"--metrics-enabled=false",
+			"--enable-http2=false",
+		})
+
+		By("Validating logs")
+		testutils.ContainsLogs("disabling HTTP/2 for compatibility", 10*time.Second, 2*time.Second)
 	})
 })
