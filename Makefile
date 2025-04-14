@@ -114,7 +114,8 @@ vet: ## Run go vet against code.
 
 .PHONY: test
 test: fmt vet envtest ## Run unit tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
+go test -coverprofile=cover.out -covermode=atomic -count=1 -parallel=4 -timeout=5m ./internal/...
 
 .PHONY: kind
 kind: $(KIND) ## Create a Kind cluster.
@@ -131,7 +132,8 @@ delete-kind: ## Delete the Kind cluster.
 .PHONY: e2e
 e2e: ginkgo ## Run all e2e tests sequentially (Ginkgo procs=1 required due to shared state: LogBuffer, Operator process, Cluster resources)
 	@echo "Running e2e tests with Ginkgo..."
-	PATH=$(LOCALBIN):$$PATH USE_EXISTING_CLUSTER="true" ginkgo --procs=1 --timeout=15m -v --focus='${FOCUS}' ./test/e2e/...
+	PATH=$(LOCALBIN):$$PATH USE_EXISTING_CLUSTER="true" \
+ginkgo --procs=1 --timeout=15m -v --focus='${FOCUS}' ./test/e2e/...
 
 .PHONY: e2e-deployment
 e2e-deployment: ## Run only Deployment e2e tests
