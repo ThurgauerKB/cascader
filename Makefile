@@ -129,7 +129,7 @@ delete-kind: ## Delete the Kind cluster.
 .PHONY: e2e
 e2e: ## Run all e2e tests against an existing Kubernetes cluster sequentially
 	@echo "Running all e2e tests..."
-	USE_EXISTING_CLUSTER="true" go test ./test/e2e/... -timeout=15m -v -ginkgo.v -ginkgo.procs=1 -ginkgo.focus='${FOCUS}'
+	USE_EXISTING_CLUSTER="true" go test ./test/e2e/... -timeout=15m -v -ginkgo.v -ginkgo.focus='${FOCUS}'
 
 .PHONY: e2e-deployment
 e2e-deployment: ## Run only Deployment e2e tests
