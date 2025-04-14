@@ -38,9 +38,7 @@ linters:
           - lll
       - path: test/
         linters:
-          - dupl
           - lll
-          - staticcheck
     paths:
       - third_party$
       - builtin$
