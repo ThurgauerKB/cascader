@@ -51,10 +51,6 @@ var _ = Describe("Deployment workload", Ordered, func() {
 		testutils.NSManager.Cleanup(ctx)
 	})
 
-	It("Ensure Operator is Running", func() {
-		testutils.ContainsLogs("\"controllerKind\":\"Deployment\",\"worker count\":1", 30*time.Second, 2*time.Second)
-	})
-
 	It("Single target in same namespace", func(ctx SpecContext) {
 		obj1Name := testutils.GenerateUniqueName("dep1")
 		obj2Name := testutils.GenerateUniqueName("dep2")

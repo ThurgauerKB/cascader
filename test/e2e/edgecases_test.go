@@ -27,8 +27,8 @@ import (
 
 var _ = Describe("Edge cases", Ordered, func() {
 	AfterEach(func() {
-		testutils.StopOperator()
 		testutils.LogBuffer.Reset()
+		testutils.StopOperator()
 	})
 
 	It("Invalid annotations", func(ctx SpecContext) {

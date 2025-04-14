@@ -51,7 +51,7 @@ func StartOperatorWithFlags(flags []string) {
 	operatorCmd = cmd
 
 	// Wait until Operator is ready
-	CountLogOccurrences("\"worker count\":1", 3, 1*time.Minute, 2*time.Second)
+	CountLogOccurrences(`"worker count":\s*1`, 3, 90*time.Second, 2*time.Second)
 }
 
 // StopOperator stops the operator process.

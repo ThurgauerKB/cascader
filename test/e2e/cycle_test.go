@@ -50,10 +50,6 @@ var _ = Describe("Cycle Detection", Ordered, func() {
 		testutils.NSManager.Cleanup(ctx)
 	})
 
-	It("Ensure Operator is Running", func() {
-		testutils.CountLogOccurrences("\"worker count\":1", 3, 30*time.Second, 2*time.Second)
-	})
-
 	It("Direct cycle detection (Deployment -> Deployment)", func(ctx SpecContext) {
 		obj1Name := testutils.GenerateUniqueName("dep1")
 

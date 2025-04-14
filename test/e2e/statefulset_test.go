@@ -50,10 +50,6 @@ var _ = Describe("StatefulSet workload", Ordered, func() {
 		testutils.NSManager.Cleanup(ctx)
 	})
 
-	It("Ensure Operator is Running", func() {
-		testutils.ContainsLogs("\"controllerKind\":\"StatefulSet\",\"worker count\":1}", 30*time.Second, 2*time.Second)
-	})
-
 	It("Single target in same namespace", func(ctx SpecContext) {
 		obj1Name := testutils.GenerateUniqueName("sts1")
 		obj2Name := testutils.GenerateUniqueName("sts2")

@@ -51,10 +51,6 @@ var _ = Describe("Mixed workloads and dependency chains", Ordered, func() {
 		testutils.NSManager.Cleanup(ctx)
 	})
 
-	It("Ensure Operator is Running", func() {
-		testutils.CountLogOccurrences("\"worker count\":1", 3, 15*time.Second, 2*time.Second)
-	})
-
 	It("Deployment -> StatefulSet -> Deployment", func(ctx SpecContext) {
 		obj1Name := testutils.GenerateUniqueName("dep1")
 		obj2Name := testutils.GenerateUniqueName("sts2")

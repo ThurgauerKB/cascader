@@ -51,47 +51,41 @@ var _ = Describe("DaemonSet Workload", Ordered, func() {
 		testutils.NSManager.Cleanup(ctx)
 	})
 
-	It("Ensure Operator is Running", func() {
-		testutils.ContainsLogs("\"controllerKind\":\"DaemonSet\",\"worker count\":1", 30*time.Second, 2*time.Second)
-	})
+	It("Single target same namespace", func(ctx SpecContext) {
+		obj1Name := testutils.GenerateUniqueName("ds1")
+		obj2Name := testutils.GenerateUniqueName("ds2")
 
-	It(
-		"Single target same namespace",
-		func(ctx SpecContext) {
-			obj1Name := testutils.GenerateUniqueName("ds1")
-			obj2Name := testutils.GenerateUniqueName("ds2")
+		obj1 := testutils.CreateDaemonSet(
+			ctx,
+			ns,
+			obj1Name,
+			testutils.WithAnnotation(daemonSetAnnotation, obj2Name),
+		)
+		obj1ID := testutils.GenerateID(obj1)
 
-			obj1 := testutils.CreateDaemonSet(
-				ctx,
-				ns,
-				obj1Name,
-				testutils.WithAnnotation(daemonSetAnnotation, obj2Name),
-			)
-			obj1ID := testutils.GenerateID(obj1)
+		obj2 := testutils.CreateDaemonSet(
+			ctx,
+			ns,
+			obj2Name,
+		)
+		obj2ID := testutils.GenerateID(obj2)
 
-			obj2 := testutils.CreateDaemonSet(
-				ctx,
-				ns,
-				obj2Name,
-			)
-			obj2ID := testutils.GenerateID(obj2)
+		testutils.RestartResource(ctx, obj1)
 
-			testutils.RestartResource(ctx, obj1)
+		By(fmt.Sprintf("Detect restart of %s", obj1ID))
+		testutils.ContainsLogs(fmt.Sprintf(
+			"%q,\"workloadID\":%q",
+			restartDetectedMsg,
+			obj1ID,
+		), 1*time.Minute, 2*time.Second)
 
-			By(fmt.Sprintf("Detect restart of %s", obj1ID))
-			testutils.ContainsLogs(fmt.Sprintf(
-				"%q,\"workloadID\":%q",
-				restartDetectedMsg,
-				obj1ID,
-			), 1*time.Minute, 2*time.Second)
-
-			By(fmt.Sprintf("Fetches restart of %s", obj2ID))
-			testutils.ContainsLogs(
-				fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID),
-				1*time.Minute,
-				2*time.Second,
-			)
-		},
+		By(fmt.Sprintf("Fetches restart of %s", obj2ID))
+		testutils.ContainsLogs(
+			fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID),
+			1*time.Minute,
+			2*time.Second,
+		)
+	},
 	)
 
 	It("Single target in different namespaces", func(ctx SpecContext) {
