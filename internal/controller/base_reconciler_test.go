@@ -47,8 +47,9 @@ const (
 	defaultRequeuAfter              time.Duration = 10 * time.Second
 	workloadStableMsg               string        = "Workload is stable"
 	successfullTriggerTargetMsg     string        = "Successfully triggered reload"
-	successfullTriggerAllTargetsMsg string        = "Triggered reloads"
+	successfullTriggerAllTargetsMsg string        = "Finished handling targets"
 	failedTriggerTargetMsg          string        = "Some targets failed to reload"
+	restartDetectedMsg              string        = "Restart detected, handling targets"
 )
 
 // Helper function to create a fake BaseReconciler
@@ -406,7 +407,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		assert.Equal(t, expectedResult, result, "Expected successful result")
 
 		logOutput := logBuffer.String()
-		assert.Contains(t, logOutput, "Restart detected", "Expected log to contain message about restart detected")
+		assert.Contains(t, logOutput, restartDetectedMsg, "Expected log to contain message about restart detected")
 		assert.Contains(t, logOutput, "Workload is stable", "Expected log to contain message about stable workload")
 		assert.Contains(t, logOutput, successfullTriggerTargetMsg, "Expected log to contain message about successful reload")
 		assert.Contains(t, logOutput, successfullTriggerAllTargetsMsg, "Expected log to contain message about successful reload")

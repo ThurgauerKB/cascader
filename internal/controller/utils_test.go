@@ -33,6 +33,19 @@ func TestRestartMarkerUpdated(t *testing.T) {
 		t.Parallel()
 
 		changed, restartedAt := restartMarkerUpdated(&corev1.PodTemplateSpec{}, restartedAtKey, lastObservedKey)
+		assert.True(t, changed)
+		assert.NotEmpty(t, restartedAt)
+	})
+
+	t.Run("Empty restart marker", func(t *testing.T) {
+		t.Parallel()
+
+		podTemplate := &corev1.PodTemplateSpec{}
+		podTemplate.Annotations = map[string]string{
+			restartedAtKey: "",
+		}
+
+		changed, restartedAt := restartMarkerUpdated(podTemplate, restartedAtKey, lastObservedKey)
 		assert.False(t, changed)
 		assert.Empty(t, restartedAt)
 	})

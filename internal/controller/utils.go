@@ -16,16 +16,23 @@ limitations under the License.
 
 package controller
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	"time"
+
+	corev1 "k8s.io/api/core/v1"
+)
 
 // restartMarkerUpdated reports whether the restart marker differs from the last observed marker.
+// If the restart marker is missing entirely, it returns true with the current timestamp.
 func restartMarkerUpdated(podTemplate *corev1.PodTemplateSpec, restartedAtKey, lastObservedRestartKey string) (bool, string) {
 	annotations := podTemplate.GetAnnotations()
 	if annotations == nil {
-		return false, ""
+		return true, time.Now().Format(time.RFC3339)
 	}
-	current, lastObserved := annotations[restartedAtKey], annotations[lastObservedRestartKey]
-	return restartMarkerChanged(current, lastObserved), current
+
+	restartedAt, lastObservedAt := annotations[restartedAtKey], annotations[lastObservedRestartKey]
+
+	return restartMarkerChanged(restartedAt, lastObservedAt), restartedAt
 }
 
 // restartMarkerChanged reports whether restartedAt differs from lastObservedAt.

@@ -65,7 +65,7 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 
 	// Check if the workload has been restarted since the last reconciliation.
 	if updated, restartedAt := restartMarkerUpdated(workload.PodTemplateSpec(), utils.RestartedAtKey, b.LastObservedRestartAnnotation); updated {
-		log.Info("Restart detected", "restartedAt", restartedAt)
+		log.Info("Restart detected, handling targets", "restartedAt", restartedAt)
 
 		if err := b.patchRestartMarker(ctx, workload, restartedAt); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to patch restart annotation: %w", err)
@@ -114,7 +114,7 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	}
 
 	metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(0) // Reset metric
-	log.Info("Triggered reloads", "succeeded", succ, "failed", fail)
+	log.Info("Finished handling targets", "succeeded", succ, "failed", fail)
 
 	return ctrl.Result{}, nil
 }
