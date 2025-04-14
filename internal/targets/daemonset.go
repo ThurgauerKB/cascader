@@ -35,12 +35,6 @@ type DaemonSetTarget struct {
 	kubeClient client.Client // Kubernetes client.
 }
 
-func (t *DaemonSetTarget) Kind() kinds.Kind        { return kinds.DaemonSetKind }
-func (t *DaemonSetTarget) Name() string            { return t.name }
-func (t *DaemonSetTarget) Namespace() string       { return t.namespace }
-func (t *DaemonSetTarget) Resource() client.Object { return &appsv1.DaemonSet{} }
-func (t *DaemonSetTarget) ID() string              { return utils.GenerateID(t.Kind(), t.namespace, t.name) }
-
 // NewDaemonSet creates a new DaemonSet target
 func NewDaemonSet(namespace, name string, c client.Client) *DaemonSetTarget {
 	return &DaemonSetTarget{
@@ -49,6 +43,12 @@ func NewDaemonSet(namespace, name string, c client.Client) *DaemonSetTarget {
 		kubeClient: c,
 	}
 }
+
+func (t *DaemonSetTarget) Kind() kinds.Kind        { return kinds.DaemonSetKind }
+func (t *DaemonSetTarget) Name() string            { return t.name }
+func (t *DaemonSetTarget) Namespace() string       { return t.namespace }
+func (t *DaemonSetTarget) Resource() client.Object { return &appsv1.DaemonSet{} }
+func (t *DaemonSetTarget) ID() string              { return utils.GenerateID(t.Kind(), t.namespace, t.name) }
 
 // Trigger updates the "restartedAt" annotation on the DaemonSet to target a rolling restart.
 func (t *DaemonSetTarget) Trigger(ctx context.Context) error {
