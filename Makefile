@@ -41,6 +41,8 @@ GOLANGCI_LINT_VERSION ?= v2.0.2
 YAMLFMT_VERSION ?= v0.16.0
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind
 KIND_VERSION ?= 0.27.0
+# renovate: datasource=github-releases depName=onsi/ginkgo
+GINKGO_VERSION ?= v2.1.4
 
 .PHONY: all
 all: build
@@ -127,9 +129,9 @@ delete-kind: ## Delete the Kind cluster.
 	@echo "Kind cluster teardown complete."
 
 .PHONY: e2e
-e2e: ## Run all e2e tests against an existing Kubernetes cluster sequentially
-	@echo "Running all e2e tests..."
-	USE_EXISTING_CLUSTER="true" go test ./test/e2e/... -timeout=15m -v -ginkgo.v -ginkgo.focus='${FOCUS}'
+e2e: ginkgo ## Run all e2e tests sequentially (Ginkgo procs=1 required due to shared state: LogBuffer, Operator process, Cluster resources)
+	@echo "Running e2e tests with Ginkgo..."
+	PATH=$(LOCALBIN):$$PATH USE_EXISTING_CLUSTER="true" ginkgo --procs=1 --timeout=15m -v --focus='${FOCUS}' ./test/e2e/...
 
 .PHONY: e2e-deployment
 e2e-deployment: ## Run only Deployment e2e tests
@@ -235,6 +237,11 @@ $(KIND): $(LOCALBIN)
 		chmod +x $(KIND); \
 		echo "Kind v$(KIND_VERSION) installed at $(KIND)."; \
 	fi
+
+.PHONY: ginkgo
+ginkgo: $(LOCALBIN)/ginkgo ## Download ginkgo locally if necessary.
+$(LOCALBIN)/ginkgo: $(LOCALBIN)
+	$(call go-install-tool,$(LOCALBIN)/ginkgo,github.com/onsi/ginkgo/v2/ginkgo,$(GINKGO_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary

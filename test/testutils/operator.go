@@ -64,4 +64,6 @@ func StopOperator() {
 		_ = syscall.Kill(-operatorCmd.Process.Pid, syscall.SIGKILL)
 		operatorCmd.Wait() // nolint:errcheck
 	}
+
+	LogBuffer.Reset()
 }

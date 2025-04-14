@@ -27,7 +27,6 @@ import (
 
 var _ = Describe("Edge cases", Ordered, func() {
 	AfterEach(func() {
-		testutils.LogBuffer.Reset()
 		testutils.StopOperator()
 	})
 
