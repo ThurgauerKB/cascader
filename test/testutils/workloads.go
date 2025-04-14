@@ -19,13 +19,14 @@ package testutils
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/thurgauerkb/cascader/internal/testutils"
 	"github.com/thurgauerkb/cascader/internal/utils"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2" // nolint:staticcheck
+	. "github.com/onsi/gomega"    // nolint:staticcheck
 
 	"github.com/google/uuid"
 	appsv1 "k8s.io/api/apps/v1"
@@ -40,7 +41,7 @@ import (
 var K8sClient client.Client
 
 // CreateDeployment creates a Deployment resource in the specified namespace with the given name.
-func CreateDeployment(ctx context.Context, namespace, name string, opts ...Option) *appsv1.Deployment {
+func CreateDeployment(ctx context.Context, namespace, name string, opts ...Option) *appsv1.Deployment { // nolint:dupl
 	meta := metav1.ObjectMeta{
 		Name:        name,
 		Namespace:   namespace,
@@ -81,7 +82,7 @@ func CreateDeployment(ctx context.Context, namespace, name string, opts ...Optio
 }
 
 // CreateStatefulSet creates a StatefulSet resource in the specified namespace with the given name.
-func CreateStatefulSet(ctx context.Context, namespace, name string, opts ...Option) *appsv1.StatefulSet {
+func CreateStatefulSet(ctx context.Context, namespace, name string, opts ...Option) *appsv1.StatefulSet { // nolint:dupl
 	meta := metav1.ObjectMeta{
 		Name:        name,
 		Namespace:   namespace,
@@ -122,7 +123,7 @@ func CreateStatefulSet(ctx context.Context, namespace, name string, opts ...Opti
 }
 
 // CreateDaemonSet creates a DaemonSet resource in the specified namespace with the given name.
-func CreateDaemonSet(ctx context.Context, namespace, name string, opts ...Option) *appsv1.DaemonSet {
+func CreateDaemonSet(ctx context.Context, namespace, name string, opts ...Option) *appsv1.DaemonSet { // nolint:dupl
 	meta := metav1.ObjectMeta{
 		Name:        name,
 		Namespace:   namespace,
@@ -205,20 +206,18 @@ func DeleteNamespaceIfExists(namespace string) {
 	}
 }
 
-// DeleteResourcePods deletes all pods associated with a specific Kubernetes resource.
-func DeleteResourcePods(ctx context.Context, resource client.Object) error {
+// DeleteRandomPod delete the first pod associated with a specific Kubernetes resource.
+func DeleteRandomPod(ctx context.Context, resource client.Object) {
 	podList, err := ListPods(ctx, resource)
-	if err != nil {
-		return err
-	}
+	Expect(err).To(Succeed())
+	Expect(podList.Items).ToNot(BeEmpty())
 
-	for _, pod := range podList.Items {
-		if err := K8sClient.Delete(ctx, &pod); err != nil {
-			return fmt.Errorf("failed to delete pod %s/%s: %w", pod.Namespace, pod.Name, err)
-		}
-	}
+	randomIndex := rand.Intn(len(podList.Items))
 
-	return nil
+	pod := podList.Items[randomIndex]
+	By(fmt.Sprintf("Deleting pod %q", pod.Name))
+
+	Expect(K8sClient.Delete(ctx, &pod)).To(Succeed())
 }
 
 // ListPods lists all pods associated with a specific Kubernetes resource.
@@ -249,7 +248,7 @@ func ListPods(ctx context.Context, resource client.Object) (podList *corev1.PodL
 }
 
 // ScaleResource scales a given Kubernetes resource by updating its replica count.
-func ScaleResource(ctx context.Context, resource client.Object, replicas int32) error {
+func ScaleResource(ctx context.Context, resource client.Object, replicas int32) {
 	patch := client.MergeFrom(resource.DeepCopyObject().(client.Object))
 
 	switch r := resource.(type) {
@@ -258,12 +257,12 @@ func ScaleResource(ctx context.Context, resource client.Object, replicas int32) 
 	case *appsv1.StatefulSet:
 		r.Spec.Replicas = &replicas
 	case *appsv1.DaemonSet:
-		return fmt.Errorf("DaemonSet does not support scaling via replicas")
+		panic("DaemonSet does not support scaling via replicas")
 	default:
-		return fmt.Errorf("unsupported resource type: %T", resource)
+		panic("unsupported resource type")
 	}
 
-	return K8sClient.Patch(ctx, resource, patch)
+	Expect(K8sClient.Patch(ctx, resource, patch)).To(Succeed())
 }
 
 // RestartResource restarts a given Kubernetes resource by updating its template annotations.

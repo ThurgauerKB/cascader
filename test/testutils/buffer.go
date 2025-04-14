@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega" // nolint:staticcheck
 )
 
 // LogBuffer is a thread-safe buffer for capturing logs.

@@ -127,9 +127,37 @@ delete-kind: ## Delete the Kind cluster.
 	@echo "Kind cluster teardown complete."
 
 .PHONY: e2e
-e2e: ## Run the e2e tests against an existing Kubernetes cluster.
-	@echo "Running e2e tests..."
-	USE_EXISTING_CLUSTER="true" go test ./test/e2e/ -timeout=15m -v -ginkgo.v
+e2e: ## Run all e2e tests against an existing Kubernetes cluster sequentially
+	@echo "Running all e2e tests..."
+	USE_EXISTING_CLUSTER="true" go test ./test/e2e/... -timeout=15m -v -ginkgo.v -ginkgo.procs=1 -ginkgo.focus='${FOCUS}'
+
+.PHONY: e2e-deployment
+e2e-deployment: ## Run only Deployment e2e tests
+	@$(MAKE) e2e FOCUS=Deployment
+
+.PHONY: e2e-statefulset
+e2e-statefulset: ## Run only StatefulSet e2e tests
+	@$(MAKE) e2e FOCUS=StatefulSet
+
+.PHONY: e2e-daemonset
+e2e-daemonset: ## Run only DaemonSet e2e tests
+	@$(MAKE) e2e FOCUS=DaemonSet
+
+.PHONY: e2e-mixed
+e2e-mixed: ## Run only Mixed workload e2e tests
+	@$(MAKE) e2e FOCUS=Mixed
+
+.PHONY: e2e-cycle
+e2e-cycle: ## Run only Cycle detection e2e tests
+	@$(MAKE) e2e FOCUS=Cycle
+
+.PHONY: e2e-namespace
+e2e-namespace: ## Run only Namespace watching e2e tests
+	@$(MAKE) e2e FOCUS=Namespace
+
+.PHONY: e2e-edgecases
+e2e-edgecases: ## Run only Edge Case e2e tests
+	@$(MAKE) e2e FOCUS=Edge
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter.
