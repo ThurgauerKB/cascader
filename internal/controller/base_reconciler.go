@@ -154,7 +154,7 @@ func (b *BaseReconciler) extractTargets(ctx context.Context, source client.Objec
 		for _, ref := range strings.Split(val, ",") {
 			ref = strings.TrimSpace(ref)
 			if ref == "" {
-				return nil, errors.New("targets cannot be empty")
+				continue
 			}
 
 			t, err := targets.NewTarget(ctx, b.KubeClient, kind, ref, source)
