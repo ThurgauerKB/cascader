@@ -167,7 +167,7 @@ func TestCheckCycle(t *testing.T) {
 				Name:      "second",
 				Namespace: "indirect-cycle",
 				Annotations: map[string]string{
-					"cascader.tkb.ch/deployment": "",
+					"cascader.tkb.ch/deployment": "non-existing",
 				},
 			},
 		}
@@ -188,7 +188,7 @@ func TestCheckCycle(t *testing.T) {
 
 		err := reconciler.checkCycle(context.Background(), srcID, targetDeps)
 		assert.Error(t, err)
-		assert.EqualError(t, err, "dependency cycle check failed: error extracting dependencies: targets cannot be empty")
+		assert.EqualError(t, err, "dependency cycle check failed: failed to fetch resource Deployment/indirect-cycle/non-existing: deployments.apps \"non-existing\" not found")
 	})
 }
 
@@ -293,7 +293,7 @@ func TestDetectCycle(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Error during traversal - empty target", func(t *testing.T) {
+	t.Run("Ignore empty target", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := context.Background()
@@ -341,8 +341,7 @@ func TestDetectCycle(t *testing.T) {
 
 		assert.False(t, hasCycle, "Expected no cycle detected")
 		assert.Nil(t, cyclePath, "Expected nil cycle path")
-		assert.Error(t, err)
-		assert.EqualError(t, err, "error extracting dependencies: targets cannot be empty")
+		assert.NoError(t, err)
 	})
 
 	t.Run("Error during traversal - target not found", func(t *testing.T) {

@@ -104,7 +104,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		assert.Contains(t, err.Error(), "unsupported workload type: *v1.ReplicaSet", "Expected error message to indicate invalid ReplicaSet")
 	})
 
-	t.Run("Invalid Target annotation", func(t *testing.T) {
+	t.Run("Empty Target annotation", func(t *testing.T) {
 		dep1 := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-deployment",
@@ -154,11 +154,20 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 			Kind:    "Deployment",
 		})
 
-		reconciler := createBaseReconciler(dep1, targetObj)
+		// Capture logs into a string buffer
+		var logBuffer bytes.Buffer
+		logger := zap.New(zap.WriteTo(&logBuffer)) // Set up a zap logger that writes to logBuffer
 
-		_, err := reconciler.ReconcileWorkload(context.Background(), dep1)
-		assert.Error(t, err, "Expected error on successful reconciliation")
-		assert.EqualError(t, err, "failed to create targets: targets cannot be empty")
+		reconciler := createBaseReconciler(dep1, targetObj)
+		reconciler.Logger = &logger
+
+		result, err := reconciler.ReconcileWorkload(context.Background(), dep1)
+		assert.NoError(t, err, "Expected no error on successful reconciliation")
+		expectedResult := ctrl.Result{}
+		assert.Equal(t, expectedResult, result, "Expected successful result")
+
+		logOutput := logBuffer.String()
+		assert.Contains(t, logOutput, "No targets found; skipping reload.")
 	})
 
 	t.Run("Successful Reconciliation (use invalid requeue duration)", func(t *testing.T) {
@@ -696,9 +705,8 @@ func TestExtractTargets(t *testing.T) {
 		}
 
 		targets, err := reconciler.extractTargets(context.Background(), obj)
-		assert.Error(t, err)
-		assert.EqualError(t, err, "targets cannot be empty")
-		assert.Empty(t, targets)
+		assert.NoError(t, err)
+		assert.Len(t, targets, 1, "Expected no targets to be extracted")
 	})
 
 	t.Run("Empty Annotations", func(t *testing.T) {
@@ -718,8 +726,8 @@ func TestExtractTargets(t *testing.T) {
 
 		targets, err := reconciler.extractTargets(context.Background(), obj)
 
-		assert.Error(t, err)
-		assert.EqualError(t, err, "targets cannot be empty")
+		assert.NoError(t, err)
+		assert.Len(t, targets, 0)
 		assert.Empty(t, targets)
 	})
 
