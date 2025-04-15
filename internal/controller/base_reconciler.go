@@ -95,8 +95,10 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 			metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(1)
 			b.Recorder.Eventf(res, corev1.EventTypeWarning, "CycleDetected", "Dependency cycle detected: %s", cycleErr.Path)
 		}
-		return ctrl.Result{}, fmt.Errorf("dependency cycle detected: %w", err)
+		log.Error(err, "Dependency cycle detected; skipping reload")
+		return ctrl.Result{}, nil // Do not return an error to avoid requeuing the workload.
 	}
+	metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(0) // Reset metric
 
 	// Ensure workload stability.
 	stable, reason := workload.Stable()
@@ -113,7 +115,6 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 		return ctrl.Result{}, nil // Do not return an error to avoid requeuing the workload.
 	}
 
-	metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(0) // Reset metric
 	log.Info("Finished handling targets", "succeeded", succ, "failed", fail)
 
 	return ctrl.Result{}, nil

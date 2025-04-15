@@ -340,13 +340,20 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 			},
 		}
 
+		var logBuffer bytes.Buffer
+		logger := zap.New(zap.WriteTo(&logBuffer)) // Set up a zap logger that writes to logBuffer
+
 		reconciler := createBaseReconciler(obj)
+		reconciler.Logger = &logger
 
 		result, err := reconciler.ReconcileWorkload(context.Background(), obj)
-		expectedResult := ctrl.Result{RequeueAfter: 0}
-		assert.Equal(t, expectedResult, result, "Expected successful result with default requeue duration")
-		assert.Error(t, err, "Expected error for self-referential dependency cycle")
-		assert.EqualError(t, err, "dependency cycle detected: direct cycle detected: adding dependency from Deployment/test-namespace/test-deployment creates a cycle: Deployment/test-namespace/test-deployment")
+		assert.NoError(t, err, "Expected no error on successful reconciliation")
+		expectedResult := ctrl.Result{}
+		assert.Equal(t, expectedResult, result, "Expected successful result")
+
+		logOutput := logBuffer.String()
+		expectedLog := "direct cycle detected: adding dependency from \\\"Deployment/test-namespace/test-deployment\\\" creates a direct cycle: Deployment/test-namespace/test-deployment"
+		assert.Contains(t, logOutput, expectedLog, "Expected log to contain message about cycle")
 	})
 
 	t.Run("Successful Reconciliation - Workload is stable", func(t *testing.T) {
