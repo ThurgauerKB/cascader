@@ -105,7 +105,7 @@ func TestCheckCycle(t *testing.T) {
 
 		err := reconciler.checkCycle(context.Background(), srcID, targetDeps)
 		assert.Error(t, err)
-		assert.EqualError(t, err, "direct cycle detected: adding dependency from \"Deployment/direct-cycle/backend\" creates a direct cycle: Deployment/direct-cycle/backend")
+		assert.EqualError(t, err, "direct cycle detected: adding dependency from Deployment/direct-cycle/backend creates a direct cycle: Deployment/direct-cycle/backend")
 	})
 
 	t.Run("Indirect Cycle", func(t *testing.T) {
@@ -146,7 +146,7 @@ func TestCheckCycle(t *testing.T) {
 
 		err := reconciler.checkCycle(context.Background(), srcID, targetDeps)
 		assert.Error(t, err)
-		assert.EqualError(t, err, "indirect cycle detected: adding dependency from \"Deployment/indirect-cycle/first\" creates a indirect cycle: Deployment/indirect-cycle/first -> Deployment/indirect-cycle/second -> Deployment/indirect-cycle/first")
+		assert.EqualError(t, err, "indirect cycle detected: adding dependency from Deployment/indirect-cycle/first creates a indirect cycle: Deployment/indirect-cycle/first -> Deployment/indirect-cycle/second -> Deployment/indirect-cycle/first")
 	})
 
 	t.Run("Error when extracting dependencies", func(t *testing.T) {

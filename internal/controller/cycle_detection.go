@@ -48,7 +48,7 @@ type CycleError struct {
 
 // Error returns a descriptive error message for the CycleError.
 func (e *CycleError) Error() string {
-	return fmt.Sprintf("%s cycle detected: adding dependency from %q creates a %s cycle: %s", e.Kind, e.SourceID, e.Kind, e.Path)
+	return fmt.Sprintf("%s cycle detected: adding dependency from %s creates a %s cycle: %s", e.Kind, e.SourceID, e.Kind, e.Path)
 }
 
 // checkCycle checks for circular dependencies among targets.

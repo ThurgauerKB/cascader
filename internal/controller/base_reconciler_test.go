@@ -352,7 +352,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		assert.Equal(t, expectedResult, result, "Expected successful result")
 
 		logOutput := logBuffer.String()
-		expectedLog := "direct cycle detected: adding dependency from \\\"Deployment/test-namespace/test-deployment\\\" creates a direct cycle: Deployment/test-namespace/test-deployment"
+		expectedLog := "direct cycle detected: adding dependency from Deployment/test-namespace/test-deployment creates a direct cycle: Deployment/test-namespace/test-deployment"
 		assert.Contains(t, logOutput, expectedLog, "Expected log to contain message about cycle")
 	})
 
