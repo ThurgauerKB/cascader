@@ -64,7 +64,7 @@ var _ = Describe("Cycle Detection", Ordered, func() {
 		testutils.RestartResource(ctx, obj1)
 
 		By(fmt.Sprintf("Fetches restart of %s", obj1ID))
-		expectedError := fmt.Sprintf("direct cycle detected: adding dependency from %s creates a cycle: %s", obj1ID, obj1ID)
+		expectedError := fmt.Sprintf("direct cycle detected: adding dependency from %q creates a direct cycle: %s", obj1ID, obj1ID)
 		testutils.ContainsLogs(expectedError, 1*time.Minute, 2*time.Second)
 	})
 
@@ -101,7 +101,7 @@ var _ = Describe("Cycle Detection", Ordered, func() {
 
 		By(fmt.Sprintf("Fetches restart of %s", obj1ID))
 		expectedCycle := fmt.Sprintf("%s -> %s -> %s", obj1ID, obj2ID, obj3ID)
-		expectedError := fmt.Sprintf("indirect cycle detected: adding dependency from %s creates a cycle: %s", obj1ID, expectedCycle)
+		expectedError := fmt.Sprintf("indirect cycle detected: adding dependency from %q creates a indirect cycle: %s", obj1ID, expectedCycle)
 		testutils.ContainsLogs(expectedError, 1*time.Minute, 2*time.Second)
 	})
 })
