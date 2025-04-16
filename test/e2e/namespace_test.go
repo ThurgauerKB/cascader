@@ -135,7 +135,7 @@ var _ = Describe("Operator watching multiple namespaces", Ordered, func() {
 
 		By("Validating fetching resource error")
 		testutils.ContainsLogs(
-			fmt.Sprintf("dependency cycle detected: dependency cycle check failed: failed to fetch resource %s: unable to get: %s/%s because of unknown namespace for the cache", obj2ID, nsIgnored, obj2Name),
+			fmt.Sprintf("dependency cycle check failed: failed to fetch resource %s: unable to get: %s/%s because of unknown namespace for the cache", obj2ID, nsIgnored, obj2Name),
 			10*time.Second,
 			1*time.Second,
 		)
