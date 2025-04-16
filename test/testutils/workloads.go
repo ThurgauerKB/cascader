@@ -22,7 +22,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/thurgauerkb/cascader/internal/testutils"
 	"github.com/thurgauerkb/cascader/internal/utils"
 
 	. "github.com/onsi/ginkgo/v2" // nolint:staticcheck
@@ -54,7 +53,7 @@ func CreateDeployment(ctx context.Context, namespace, name string, opts ...Optio
 		Labels:      map[string]string{"app": name},
 	}
 	spec := appsv1.DeploymentSpec{
-		Replicas: testutils.Int32Ptr(1),
+		Replicas: Int32Ptr(1),
 		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": name}},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": name}},
@@ -82,7 +81,7 @@ func CreateStatefulSet(ctx context.Context, namespace, name string, opts ...Opti
 		Labels:      map[string]string{"app": name},
 	}
 	spec := appsv1.StatefulSetSpec{
-		Replicas: testutils.Int32Ptr(1),
+		Replicas: Int32Ptr(1),
 		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": name}},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": name}},

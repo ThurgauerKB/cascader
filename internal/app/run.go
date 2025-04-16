@@ -203,5 +203,6 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	if err := mgr.Start(ctx); err != nil {
 		return fmt.Errorf("manager encountered an error while running: %w", err)
 	}
+
 	return nil
 }

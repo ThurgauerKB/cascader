@@ -155,7 +155,7 @@ func TestCheckCycle(t *testing.T) {
 		depA := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "first",
-				Namespace: "indirect-cycle",
+				Namespace: "error-fetching",
 				Annotations: map[string]string{
 					"cascader.tkb.ch/deployment": "second",
 				},
@@ -165,7 +165,7 @@ func TestCheckCycle(t *testing.T) {
 		depB := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "second",
-				Namespace: "indirect-cycle",
+				Namespace: "error-fetching",
 				Annotations: map[string]string{
 					"cascader.tkb.ch/deployment": "non-existing",
 				},
@@ -181,14 +181,14 @@ func TestCheckCycle(t *testing.T) {
 			},
 		}
 
-		srcID := "Deployment/indirect-cycle/first"
+		srcID := "Deployment/error-cycle/first"
 		targetDeps := []targets.Target{
-			targets.NewDeployment("indirect-cycle", "second", fakeClient),
+			targets.NewDeployment("error-fetching", "second", fakeClient),
 		}
 
 		err := reconciler.checkCycle(context.Background(), srcID, targetDeps)
 		assert.Error(t, err)
-		assert.EqualError(t, err, "dependency cycle check failed: failed to fetch resource Deployment/indirect-cycle/non-existing: deployments.apps \"non-existing\" not found")
+		assert.EqualError(t, err, "dependency cycle check failed: failed to fetch resource Deployment/error-fetching/non-existing: deployments.apps \"non-existing\" not found")
 	})
 
 	t.Run("Error when extracting dependencies", func(t *testing.T) {
@@ -197,7 +197,7 @@ func TestCheckCycle(t *testing.T) {
 		depA := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "first",
-				Namespace: "indirect-cycle",
+				Namespace: "error-extracting",
 				Annotations: map[string]string{
 					"cascader.tkb.ch/deployment": "second",
 				},
@@ -207,7 +207,7 @@ func TestCheckCycle(t *testing.T) {
 		depB := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "second",
-				Namespace: "indirect-cycle",
+				Namespace: "error-extracting",
 				Annotations: map[string]string{
 					"cascader.tkb.ch/deployment": "invalid/target/annotation",
 				},
@@ -223,9 +223,9 @@ func TestCheckCycle(t *testing.T) {
 			},
 		}
 
-		srcID := "Deployment/indirect-cycle/first"
+		srcID := "Deployment/error-extracting/first"
 		targetDeps := []targets.Target{
-			targets.NewDeployment("indirect-cycle", "second", fakeClient),
+			targets.NewDeployment("error-extracting", "second", fakeClient),
 		}
 
 		err := reconciler.checkCycle(context.Background(), srcID, targetDeps)
