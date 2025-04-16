@@ -86,7 +86,7 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	})
 
 	// Configure metrics server
-	metricsServerOptions := metricsserver.Options{BindAddress: "0"} // disable listener per default
+	metricsServerOptions := metricsserver.Options{BindAddress: "0"} // disable listener by default
 	if cfg.EnableMetrics {
 		metricsServerOptions = metricsserver.Options{
 			BindAddress:   cfg.MetricsAddr,
