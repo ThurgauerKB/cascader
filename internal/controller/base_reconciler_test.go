@@ -170,6 +170,65 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		assert.Contains(t, logOutput, "No targets found; skipping reload.")
 	})
 
+	t.Run("Invalid Target annotation", func(t *testing.T) {
+		dep1 := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-deployment",
+				Namespace: "test-namespace",
+				Annotations: map[string]string{
+					"cascader.tkb.ch/deployment": "invalid/target/annotation",
+				},
+			},
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Deployment",
+				APIVersion: "apps/v1",
+			},
+			Status: appsv1.DeploymentStatus{
+				ReadyReplicas:      3,
+				ObservedGeneration: 5,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Replicas: testutils.Int32Ptr(4),
+			},
+		}
+		dep1.GetObjectKind().SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "apps",
+			Version: "v1",
+			Kind:    "Deployment",
+		})
+
+		targetObj := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "another-deployment",
+				Namespace: "test-namespace",
+			},
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Deployment",
+				APIVersion: "apps/v1",
+			},
+			Status: appsv1.DeploymentStatus{
+				ReadyReplicas:      3,
+				ObservedGeneration: 5,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Replicas: testutils.Int32Ptr(4),
+			},
+		}
+		targetObj.GetObjectKind().SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "apps",
+			Version: "v1",
+			Kind:    "Deployment",
+		})
+
+		reconciler := createBaseReconciler(dep1, targetObj)
+
+		result, err := reconciler.ReconcileWorkload(context.Background(), dep1)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "failed to create targets: cannot create target for workload: invalid reference: invalid format: invalid/target/annotation")
+		expectedResult := ctrl.Result{}
+		assert.Equal(t, expectedResult, result, "Expected successful result")
+	})
+
 	t.Run("Successful Reconciliation (use invalid requeue duration)", func(t *testing.T) {
 		t.Parallel()
 

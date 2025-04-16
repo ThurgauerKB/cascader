@@ -149,7 +149,7 @@ func TestCheckCycle(t *testing.T) {
 		assert.EqualError(t, err, "indirect cycle detected: adding dependency from Deployment/indirect-cycle/first creates a indirect cycle: Deployment/indirect-cycle/first -> Deployment/indirect-cycle/second -> Deployment/indirect-cycle/first")
 	})
 
-	t.Run("Error when extracting dependencies", func(t *testing.T) {
+	t.Run("Error when fetching resource", func(t *testing.T) {
 		t.Parallel()
 
 		depA := &appsv1.Deployment{
@@ -189,6 +189,48 @@ func TestCheckCycle(t *testing.T) {
 		err := reconciler.checkCycle(context.Background(), srcID, targetDeps)
 		assert.Error(t, err)
 		assert.EqualError(t, err, "dependency cycle check failed: failed to fetch resource Deployment/indirect-cycle/non-existing: deployments.apps \"non-existing\" not found")
+	})
+
+	t.Run("Error when extracting dependencies", func(t *testing.T) {
+		t.Parallel()
+
+		depA := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "first",
+				Namespace: "indirect-cycle",
+				Annotations: map[string]string{
+					"cascader.tkb.ch/deployment": "second",
+				},
+			},
+		}
+
+		depB := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "second",
+				Namespace: "indirect-cycle",
+				Annotations: map[string]string{
+					"cascader.tkb.ch/deployment": "invalid/target/annotation",
+				},
+			},
+		}
+
+		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(depA, depB).Build()
+
+		reconciler := &BaseReconciler{
+			KubeClient: fakeClient,
+			AnnotationKindMap: kinds.AnnotationKindMap{
+				"cascader.tkb.ch/deployment": kinds.DeploymentKind,
+			},
+		}
+
+		srcID := "Deployment/indirect-cycle/first"
+		targetDeps := []targets.Target{
+			targets.NewDeployment("indirect-cycle", "second", fakeClient),
+		}
+
+		err := reconciler.checkCycle(context.Background(), srcID, targetDeps)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "dependency cycle check failed: error extracting dependencies: cannot create target for workload: invalid reference: invalid format: invalid/target/annotation")
 	})
 }
 
