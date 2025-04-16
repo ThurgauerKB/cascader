@@ -70,6 +70,17 @@ type Config struct {
 	LogDev                        bool          // Enable development logging mode
 }
 
+// Validate validates the configuration.
+func (c Config) Validate() error {
+	if _, err := net.ResolveTCPAddr("tcp", c.MetricsAddr); err != nil {
+		return fmt.Errorf("invalid metrics listen address: %w", err)
+	}
+	if _, err := net.ResolveTCPAddr("tcp", c.ProbeAddr); err != nil {
+		return fmt.Errorf("invalid probe listen address: %w", err)
+	}
+	return nil
+}
+
 // ParseArgs parses CLI arguments into a Config struct.
 func ParseArgs(args []string, out io.Writer, version string) (Config, error) {
 	var cfg Config
@@ -138,15 +149,4 @@ func captureUsage(fs *flag.FlagSet) string {
 	fs.SetOutput(&buf)
 	fs.Usage()
 	return buf.String()
-}
-
-// Validate validates the configuration.
-func (c Config) Validate() error {
-	if _, err := net.ResolveTCPAddr("tcp", c.MetricsAddr); err != nil {
-		return fmt.Errorf("invalid metrics listen address: %w", err)
-	}
-	if _, err := net.ResolveTCPAddr("tcp", c.ProbeAddr); err != nil {
-		return fmt.Errorf("invalid probe listen address: %w", err)
-	}
-	return nil
 }
