@@ -484,6 +484,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		logOutput := logBuffer.String()
 		assert.Contains(t, logOutput, restartDetectedMsg, "Expected log to contain message about restart detected")
 		assert.Contains(t, logOutput, "Workload is stable", "Expected log to contain message about stable workload")
+		assert.Contains(t, logOutput, "Dependent targets extracted")
 		assert.Contains(t, logOutput, successfullTriggerTargetMsg, "Expected log to contain message about successful reload")
 		assert.Contains(t, logOutput, successfullTriggerAllTargetsMsg, "Expected log to contain message about successful reload")
 	})

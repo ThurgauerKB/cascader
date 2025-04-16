@@ -19,8 +19,19 @@ package controller
 import (
 	"time"
 
+	"github.com/thurgauerkb/cascader/internal/targets"
+
 	corev1 "k8s.io/api/core/v1"
 )
+
+// targetIDs returns the list of IDs for a slice of targets.
+func targetIDs(ts []targets.Target) []string {
+	ids := make([]string, len(ts))
+	for i, t := range ts {
+		ids[i] = t.ID()
+	}
+	return ids
+}
 
 // restartMarkerUpdated reports whether the restart marker differs from the last observed marker.
 // If the restart marker is missing entirely, it returns true with the current timestamp.

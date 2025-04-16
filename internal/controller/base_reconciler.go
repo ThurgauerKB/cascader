@@ -64,7 +64,8 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	log := b.Logger.WithValues("workloadID", id) // Append workload ID to logger context
 
 	// Check if the workload has been restarted since the last reconciliation.
-	if updated, restartedAt := restartMarkerUpdated(workload.PodTemplateSpec(), utils.RestartedAtKey, b.LastObservedRestartAnnotation); updated {
+	updated, restartedAt := restartMarkerUpdated(workload.PodTemplateSpec(), utils.RestartedAtKey, b.LastObservedRestartAnnotation)
+	if updated {
 		log.Info("Restart detected, handling targets", "restartedAt", restartedAt)
 
 		if err := b.patchRestartMarker(ctx, workload, restartedAt); err != nil {
@@ -80,6 +81,9 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	if len(targets) == 0 {
 		log.Info("No targets found; skipping reload.")
 		return ctrl.Result{}, nil
+	}
+	if updated { // Use 'updated' to log target IDs only once, right after a restart is detected.
+		log.Info("Dependent targets extracted", "targets", targetIDs(targets))
 	}
 	metrics.Workloads.WithLabelValues(ns, name, kind).Set(float64(len(targets)))
 
