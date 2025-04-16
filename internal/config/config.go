@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net"
 	"time"
 
 	flag "github.com/spf13/pflag"
@@ -113,6 +114,14 @@ func ParseArgs(args []string, out io.Writer, version string) (Config, error) {
 	// Parse flags
 	if err := fs.Parse(args); err != nil {
 		return Config{}, fmt.Errorf("failed to parse arguments: %w", err)
+	}
+
+	// Validate listen addresses since pflag doesn't do it
+	if _, err := net.ResolveTCPAddr("tcp", cfg.MetricsAddr); err != nil {
+		return Config{}, fmt.Errorf("invalid metrics listen address: %w", err)
+	}
+	if _, err := net.ResolveTCPAddr("tcp", cfg.ProbeAddr); err != nil {
+		return Config{}, fmt.Errorf("invalid probe listen address: %w", err)
 	}
 
 	// Handle --help and --version
