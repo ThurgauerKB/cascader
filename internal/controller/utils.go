@@ -33,8 +33,8 @@ func targetIDs(ts []targets.Target) []string {
 	return ids
 }
 
-// restartMarkerUpdated reports whether the restart marker differs from the last observed marker.
-// If the restart marker is missing entirely, it returns true with the current timestamp.
+// restartMarkerUpdated returns true if the annotation for restartedAtKey differs from lastObservedRestartKey.
+// If restartedAtKey is missing, it assumes a restart and returns the current timestamp.
 func restartMarkerUpdated(podTemplate *corev1.PodTemplateSpec, restartedAtKey, lastObservedRestartKey string) (bool, string) {
 	annotations := podTemplate.GetAnnotations()
 	if annotations == nil {
