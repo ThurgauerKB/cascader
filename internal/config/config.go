@@ -116,12 +116,9 @@ func ParseArgs(args []string, out io.Writer, version string) (Config, error) {
 		return Config{}, fmt.Errorf("failed to parse arguments: %w", err)
 	}
 
-	// Validate listen addresses since pflag doesn't do it
-	if _, err := net.ResolveTCPAddr("tcp", cfg.MetricsAddr); err != nil {
-		return Config{}, fmt.Errorf("invalid metrics listen address: %w", err)
-	}
-	if _, err := net.ResolveTCPAddr("tcp", cfg.ProbeAddr); err != nil {
-		return Config{}, fmt.Errorf("invalid probe listen address: %w", err)
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return Config{}, fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	// Handle --help and --version
@@ -141,4 +138,15 @@ func captureUsage(fs *flag.FlagSet) string {
 	fs.SetOutput(&buf)
 	fs.Usage()
 	return buf.String()
+}
+
+// Validate validates the configuration.
+func (c Config) Validate() error {
+	if _, err := net.ResolveTCPAddr("tcp", c.MetricsAddr); err != nil {
+		return fmt.Errorf("invalid metrics listen address: %w", err)
+	}
+	if _, err := net.ResolveTCPAddr("tcp", c.ProbeAddr); err != nil {
+		return fmt.Errorf("invalid probe listen address: %w", err)
+	}
+	return nil
 }

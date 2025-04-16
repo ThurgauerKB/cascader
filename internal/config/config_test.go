@@ -235,24 +235,24 @@ func TestParseArgs(t *testing.T) {
 		assert.Equal(t, ":80", cfg.MetricsAddr)
 	})
 
-	t.Run("Invalid metrics listen address", func(t *testing.T) {
+	t.Run("Invalid metrics listen address (invalid)", func(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--metrics-bind-address", ":invalid"}
 		_, err := ParseArgs(args, io.Discard, "0.0.0")
 
 		assert.Error(t, err)
-		assert.EqualError(t, err, "invalid metrics listen address: lookup tcp/invalid: unknown port")
+		assert.EqualError(t, err, "invalid configuration: invalid metrics listen address: lookup tcp/invalid: unknown port")
 	})
 
-	t.Run("Invalid probes listen address", func(t *testing.T) {
+	t.Run("Invalid probes listen address (invalid)", func(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--health-probe-bind-address", ":invalid"}
 		_, err := ParseArgs(args, io.Discard, "0.0.0")
 
 		assert.Error(t, err)
-		assert.EqualError(t, err, "invalid probe listen address: lookup tcp/invalid: unknown port")
+		assert.EqualError(t, err, "invalid configuration: invalid probe listen address: lookup tcp/invalid: unknown port")
 	})
 }
 
@@ -300,5 +300,46 @@ func TestCaptureUsage(t *testing.T) {
 		assert.Contains(t, output, "First flag", "Expected 'First flag' description")
 		assert.Contains(t, output, "flag-two", "Expected 'flag-two' in usage output")
 		assert.Contains(t, output, "Second flag", "Expected 'Second flag' description")
+	})
+}
+
+func TestConfigValidate(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Valid listen addresses (127.0.0.1:8081)", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := Config{
+			MetricsAddr: "localhost:9090",
+			ProbeAddr:   "127.0.0.1:8081",
+		}
+
+		assert.NoError(t, cfg.Validate())
+	})
+
+	t.Run("Invalid metrics address", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := Config{
+			MetricsAddr: ":invalid",
+			ProbeAddr:   ":8081",
+		}
+
+		err := cfg.Validate()
+		assert.Error(t, err)
+		assert.EqualError(t, err, "invalid metrics listen address: lookup tcp/invalid: unknown port")
+	})
+
+	t.Run("Invalid probe address", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := Config{
+			MetricsAddr: ":9090",
+			ProbeAddr:   ":invalid",
+		}
+
+		err := cfg.Validate()
+		assert.Error(t, err)
+		assert.EqualError(t, err, "invalid probe listen address: lookup tcp/invalid: unknown port")
 	})
 }
