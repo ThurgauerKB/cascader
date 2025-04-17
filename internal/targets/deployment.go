@@ -35,12 +35,6 @@ type DeploymentTarget struct {
 	kubeClient client.Client // Kubernetes client.
 }
 
-func (t *DeploymentTarget) Kind() kinds.Kind        { return kinds.DeploymentKind }
-func (t *DeploymentTarget) Name() string            { return t.name }
-func (t *DeploymentTarget) Namespace() string       { return t.namespace }
-func (t *DeploymentTarget) Resource() client.Object { return &appsv1.Deployment{} }
-func (t *DeploymentTarget) ID() string              { return utils.GenerateID(t.Kind(), t.namespace, t.name) }
-
 // NewDeployment creates a new Deployment target
 func NewDeployment(namespace, name string, c client.Client) *DeploymentTarget {
 	return &DeploymentTarget{
@@ -49,6 +43,12 @@ func NewDeployment(namespace, name string, c client.Client) *DeploymentTarget {
 		kubeClient: c,
 	}
 }
+
+func (t *DeploymentTarget) Kind() kinds.Kind        { return kinds.DeploymentKind }
+func (t *DeploymentTarget) Name() string            { return t.name }
+func (t *DeploymentTarget) Namespace() string       { return t.namespace }
+func (t *DeploymentTarget) Resource() client.Object { return &appsv1.Deployment{} }
+func (t *DeploymentTarget) ID() string              { return utils.GenerateID(t.Kind(), t.namespace, t.name) }
 
 // Trigger updates the "restartedAt" annotation on the Deployment to target a rolling restart.
 func (t *DeploymentTarget) Trigger(ctx context.Context) error {

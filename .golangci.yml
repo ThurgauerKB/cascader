@@ -8,6 +8,7 @@ linters:
     - copyloopvar
     - dupl
     - errcheck
+    - funcorder
     - ginkgolinter
     - goconst
     - gocyclo
@@ -38,9 +39,7 @@ linters:
           - lll
       - path: test/
         linters:
-          - dupl
           - lll
-          - staticcheck
     paths:
       - third_party$
       - builtin$

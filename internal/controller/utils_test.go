@@ -19,9 +19,38 @@ package controller
 import (
 	"testing"
 
+	"github.com/thurgauerkb/cascader/internal/targets"
+
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+func TestTargetIDs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Extract IDs from multiple targets", func(t *testing.T) {
+		t.Parallel()
+
+		c := fake.NewClientBuilder().Build()
+
+		input := []targets.Target{
+			targets.NewDeployment("ns1", "dep1", c),
+			targets.NewStatefulSet("ns1", "sts1", c),
+			targets.NewDaemonSet("ns1", "ds1", c),
+		}
+
+		expected := []string{"Deployment/ns1/dep1", "StatefulSet/ns1/sts1", "DaemonSet/ns1/ds1"}
+		assert.Equal(t, expected, targetIDs(input))
+	})
+
+	t.Run("Empty slice returns empty result", func(t *testing.T) {
+		t.Parallel()
+
+		var input []targets.Target
+		assert.Empty(t, targetIDs(input))
+	})
+}
 
 func TestRestartMarkerUpdated(t *testing.T) {
 	t.Parallel()
@@ -33,6 +62,19 @@ func TestRestartMarkerUpdated(t *testing.T) {
 		t.Parallel()
 
 		changed, restartedAt := restartMarkerUpdated(&corev1.PodTemplateSpec{}, restartedAtKey, lastObservedKey)
+		assert.True(t, changed)
+		assert.NotEmpty(t, restartedAt)
+	})
+
+	t.Run("Empty restart marker", func(t *testing.T) {
+		t.Parallel()
+
+		podTemplate := &corev1.PodTemplateSpec{}
+		podTemplate.Annotations = map[string]string{
+			restartedAtKey: "",
+		}
+
+		changed, restartedAt := restartMarkerUpdated(podTemplate, restartedAtKey, lastObservedKey)
 		assert.False(t, changed)
 		assert.Empty(t, restartedAt)
 	})

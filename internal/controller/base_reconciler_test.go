@@ -26,9 +26,9 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/thurgauerkb/cascader/internal/kinds"
 	"github.com/thurgauerkb/cascader/internal/targets"
-	"github.com/thurgauerkb/cascader/internal/testutils"
 	"github.com/thurgauerkb/cascader/internal/utils"
 	"github.com/thurgauerkb/cascader/internal/workloads"
+	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -47,8 +47,9 @@ const (
 	defaultRequeuAfter              time.Duration = 10 * time.Second
 	workloadStableMsg               string        = "Workload is stable"
 	successfullTriggerTargetMsg     string        = "Successfully triggered reload"
-	successfullTriggerAllTargetsMsg string        = "Triggered reloads"
+	successfullTriggerAllTargetsMsg string        = "Finished handling targets"
 	failedTriggerTargetMsg          string        = "Some targets failed to reload"
+	restartDetectedMsg              string        = "Restart detected, handling targets"
 )
 
 // Helper function to create a fake BaseReconciler
@@ -103,7 +104,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		assert.Contains(t, err.Error(), "unsupported workload type: *v1.ReplicaSet", "Expected error message to indicate invalid ReplicaSet")
 	})
 
-	t.Run("Invalid Target annotation", func(t *testing.T) {
+	t.Run("Empty Target annotation", func(t *testing.T) {
 		dep1 := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-deployment",
@@ -153,11 +154,79 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 			Kind:    "Deployment",
 		})
 
+		// Capture logs into a string buffer
+		var logBuffer bytes.Buffer
+		logger := zap.New(zap.WriteTo(&logBuffer)) // Set up a zap logger that writes to logBuffer
+
+		reconciler := createBaseReconciler(dep1, targetObj)
+		reconciler.Logger = &logger
+
+		result, err := reconciler.ReconcileWorkload(context.Background(), dep1)
+		assert.NoError(t, err, "Expected no error on successful reconciliation")
+		expectedResult := ctrl.Result{}
+		assert.Equal(t, expectedResult, result, "Expected successful result")
+
+		logOutput := logBuffer.String()
+		assert.Contains(t, logOutput, "No targets found; skipping reload.")
+	})
+
+	t.Run("Invalid Target annotation", func(t *testing.T) {
+		dep1 := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-deployment",
+				Namespace: "test-namespace",
+				Annotations: map[string]string{
+					"cascader.tkb.ch/deployment": "invalid/target/annotation",
+				},
+			},
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Deployment",
+				APIVersion: "apps/v1",
+			},
+			Status: appsv1.DeploymentStatus{
+				ReadyReplicas:      3,
+				ObservedGeneration: 5,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Replicas: testutils.Int32Ptr(4),
+			},
+		}
+		dep1.GetObjectKind().SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "apps",
+			Version: "v1",
+			Kind:    "Deployment",
+		})
+
+		targetObj := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "another-deployment",
+				Namespace: "test-namespace",
+			},
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Deployment",
+				APIVersion: "apps/v1",
+			},
+			Status: appsv1.DeploymentStatus{
+				ReadyReplicas:      3,
+				ObservedGeneration: 5,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Replicas: testutils.Int32Ptr(4),
+			},
+		}
+		targetObj.GetObjectKind().SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "apps",
+			Version: "v1",
+			Kind:    "Deployment",
+		})
+
 		reconciler := createBaseReconciler(dep1, targetObj)
 
-		_, err := reconciler.ReconcileWorkload(context.Background(), dep1)
-		assert.Error(t, err, "Expected error on successful reconciliation")
-		assert.EqualError(t, err, "failed to create targets: targets cannot be empty")
+		result, err := reconciler.ReconcileWorkload(context.Background(), dep1)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "failed to create targets: cannot create target for workload: invalid reference: invalid format: invalid/target/annotation")
+		expectedResult := ctrl.Result{}
+		assert.Equal(t, expectedResult, result, "Expected successful result")
 	})
 
 	t.Run("Successful Reconciliation (use invalid requeue duration)", func(t *testing.T) {
@@ -330,13 +399,20 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 			},
 		}
 
+		var logBuffer bytes.Buffer
+		logger := zap.New(zap.WriteTo(&logBuffer)) // Set up a zap logger that writes to logBuffer
+
 		reconciler := createBaseReconciler(obj)
+		reconciler.Logger = &logger
 
 		result, err := reconciler.ReconcileWorkload(context.Background(), obj)
-		expectedResult := ctrl.Result{RequeueAfter: 0}
-		assert.Equal(t, expectedResult, result, "Expected successful result with default requeue duration")
-		assert.Error(t, err, "Expected error for self-referential dependency cycle")
-		assert.EqualError(t, err, "dependency cycle detected: direct cycle detected: adding dependency from Deployment/test-namespace/test-deployment creates a cycle: Deployment/test-namespace/test-deployment")
+		assert.NoError(t, err, "Expected no error on successful reconciliation")
+		expectedResult := ctrl.Result{}
+		assert.Equal(t, expectedResult, result, "Expected successful result")
+
+		logOutput := logBuffer.String()
+		expectedLog := "direct cycle detected: adding dependency from Deployment/test-namespace/test-deployment creates a direct cycle: Deployment/test-namespace/test-deployment"
+		assert.Contains(t, logOutput, expectedLog, "Expected log to contain message about cycle")
 	})
 
 	t.Run("Successful Reconciliation - Workload is stable", func(t *testing.T) {
@@ -406,8 +482,9 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		assert.Equal(t, expectedResult, result, "Expected successful result")
 
 		logOutput := logBuffer.String()
-		assert.Contains(t, logOutput, "Restart detected", "Expected log to contain message about restart detected")
+		assert.Contains(t, logOutput, restartDetectedMsg, "Expected log to contain message about restart detected")
 		assert.Contains(t, logOutput, "Workload is stable", "Expected log to contain message about stable workload")
+		assert.Contains(t, logOutput, "Dependent targets extracted")
 		assert.Contains(t, logOutput, successfullTriggerTargetMsg, "Expected log to contain message about successful reload")
 		assert.Contains(t, logOutput, successfullTriggerAllTargetsMsg, "Expected log to contain message about successful reload")
 	})
@@ -695,9 +772,8 @@ func TestExtractTargets(t *testing.T) {
 		}
 
 		targets, err := reconciler.extractTargets(context.Background(), obj)
-		assert.Error(t, err)
-		assert.EqualError(t, err, "targets cannot be empty")
-		assert.Empty(t, targets)
+		assert.NoError(t, err)
+		assert.Len(t, targets, 1, "Expected no targets to be extracted")
 	})
 
 	t.Run("Empty Annotations", func(t *testing.T) {
@@ -717,8 +793,8 @@ func TestExtractTargets(t *testing.T) {
 
 		targets, err := reconciler.extractTargets(context.Background(), obj)
 
-		assert.Error(t, err)
-		assert.EqualError(t, err, "targets cannot be empty")
+		assert.NoError(t, err)
+		assert.Len(t, targets, 0)
 		assert.Empty(t, targets)
 	})
 

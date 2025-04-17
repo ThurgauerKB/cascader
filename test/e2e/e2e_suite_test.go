@@ -17,14 +17,13 @@ limitations under the License.
 package e2e
 
 import (
-	"context"
 	"os/exec"
 	"testing"
 
 	"github.com/thurgauerkb/cascader/test/testutils"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2" // nolint:staticcheck
+	. "github.com/onsi/gomega"    // nolint:staticcheck
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -37,6 +36,14 @@ import (
 var (
 	testCfg    *rest.Config
 	testScheme = runtime.NewScheme()
+)
+
+const (
+	successfullTriggerTargetMsg string = "Successfully triggered reload"
+	restartDetectedMsg          string = "Restart detected, handling targets"
+	deploymentAnnotation        string = "cascader.tkb.ch/deployment"
+	statefulSetAnnotation       string = "cascader.tkb.ch/statefulset"
+	daemonSetAnnotation         string = "cascader.tkb.ch/daemonset"
 )
 
 func TestE2E(t *testing.T) {
@@ -71,7 +78,7 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func(ctx SpecContext) {
 	By("Deleting namespaces")
-	testutils.NSManager.Cleanup(context.Background())
+	testutils.NSManager.Cleanup(ctx)
 
 	By("Stopping operator manager")
 	testutils.StopOperator()

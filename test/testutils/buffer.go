@@ -19,11 +19,12 @@ package testutils
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega" // nolint:staticcheck
 )
 
 // LogBuffer is a thread-safe buffer for capturing logs.
@@ -85,9 +86,11 @@ func ContainsNotLogs(expectedLog string, timeout, interval time.Duration) {
 }
 
 // CountLogOccurrences checks how many times the expected string appears in the log buffer.
-func CountLogOccurrences(expectedText string, amount int, timeout, interval time.Duration) {
+func CountLogOccurrences(pattern string, amount int, timeout, interval time.Duration) {
+	re := regexp.MustCompile(pattern)
+
 	Eventually(func() bool {
 		content := LogBuffer.String()
-		return strings.Count(content, expectedText) == amount
-	}, timeout, interval).Should(BeTrue(), "Expected text not found")
+		return len(re.FindAllStringIndex(content, -1)) == amount
+	}, timeout, interval).Should(BeTrue(), fmt.Sprintf("Expected pattern not found: %s", pattern))
 }

@@ -41,6 +41,8 @@ GOLANGCI_LINT_VERSION ?= v2.1.2
 YAMLFMT_VERSION ?= v0.16.0
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind
 KIND_VERSION ?= 0.27.0
+# renovate: datasource=github-releases depName=onsi/ginkgo
+GINKGO_VERSION ?= v2.1.4
 
 .PHONY: all
 all: build
@@ -112,7 +114,8 @@ vet: ## Run go vet against code.
 
 .PHONY: test
 test: fmt vet envtest ## Run unit tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
+go test -coverprofile=cover.out -covermode=atomic -count=1 -parallel=4 -timeout=5m ./internal/...
 
 .PHONY: kind
 kind: $(KIND) ## Create a Kind cluster.
@@ -127,9 +130,38 @@ delete-kind: ## Delete the Kind cluster.
 	@echo "Kind cluster teardown complete."
 
 .PHONY: e2e
-e2e: ## Run the e2e tests against an existing Kubernetes cluster.
-	@echo "Running e2e tests..."
-	USE_EXISTING_CLUSTER="true" go test ./test/e2e/ -timeout=15m -v -ginkgo.v
+e2e: ginkgo ## Run all e2e tests sequentially (Ginkgo procs=1 required due to shared state: LogBuffer, Operator process, Cluster resources)
+	@echo "Running e2e tests with Ginkgo..."
+	PATH=$(LOCALBIN):$$PATH USE_EXISTING_CLUSTER="true" \
+ginkgo --procs=1 --timeout=15m -v --focus='${FOCUS}' ./test/e2e/...
+
+.PHONY: e2e-deployment
+e2e-deployment: ## Run only Deployment e2e tests
+	@$(MAKE) e2e FOCUS=Deployment
+
+.PHONY: e2e-statefulset
+e2e-statefulset: ## Run only StatefulSet e2e tests
+	@$(MAKE) e2e FOCUS=StatefulSet
+
+.PHONY: e2e-daemonset
+e2e-daemonset: ## Run only DaemonSet e2e tests
+	@$(MAKE) e2e FOCUS=DaemonSet
+
+.PHONY: e2e-mixed
+e2e-mixed: ## Run only Mixed workload e2e tests
+	@$(MAKE) e2e FOCUS=Mixed
+
+.PHONY: e2e-cycle
+e2e-cycle: ## Run only Cycle detection e2e tests
+	@$(MAKE) e2e FOCUS=Cycle
+
+.PHONY: e2e-namespace
+e2e-namespace: ## Run only Namespace watching e2e tests
+	@$(MAKE) e2e FOCUS=Namespace
+
+.PHONY: e2e-edgecases
+e2e-edgecases: ## Run only Edge Case e2e tests
+	@$(MAKE) e2e FOCUS=Edge
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter.
@@ -207,6 +239,11 @@ $(KIND): $(LOCALBIN)
 		chmod +x $(KIND); \
 		echo "Kind v$(KIND_VERSION) installed at $(KIND)."; \
 	fi
+
+.PHONY: ginkgo
+ginkgo: $(LOCALBIN)/ginkgo ## Download ginkgo locally if necessary.
+$(LOCALBIN)/ginkgo: $(LOCALBIN)
+	$(call go-install-tool,$(LOCALBIN)/ginkgo,github.com/onsi/ginkgo/v2/ginkgo,$(GINKGO_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary

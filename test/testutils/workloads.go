@@ -19,13 +19,13 @@ package testutils
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"time"
 
-	"github.com/thurgauerkb/cascader/internal/testutils"
 	"github.com/thurgauerkb/cascader/internal/utils"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2" // nolint:staticcheck
+	. "github.com/onsi/gomega"    // nolint:staticcheck
 
 	"github.com/google/uuid"
 	appsv1 "k8s.io/api/apps/v1"
@@ -36,11 +36,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// K8sClient is the global Kubernetes client for tests.
+const (
+	defaultTestImage     string = "nginx:1.21"
+	defaultTestImageName string = "nginx"
+)
+
+// K8sClient is the shared Kubernetes client used in e2e tests.
 var K8sClient client.Client
 
-// CreateDeployment creates a Deployment resource in the specified namespace with the given name.
-func CreateDeployment(ctx context.Context, namespace, name string, opts ...Option) *appsv1.Deployment {
+// CreateDeployment creates and applies a Deployment in the specified namespace.
+func CreateDeployment(ctx context.Context, namespace, name string, opts ...Option) *appsv1.Deployment { // nolint:dupl
 	meta := metav1.ObjectMeta{
 		Name:        name,
 		Namespace:   namespace,
@@ -48,40 +53,27 @@ func CreateDeployment(ctx context.Context, namespace, name string, opts ...Optio
 		Labels:      map[string]string{"app": name},
 	}
 	spec := appsv1.DeploymentSpec{
-		Replicas: testutils.Int32Ptr(1),
-		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{"app": name},
-		},
+		Replicas: Int32Ptr(1),
+		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": name}},
 		Template: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{"app": name},
-			},
+			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": name}},
 			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{
-					{
-						Name:  "nginx",
-						Image: "nginx:1.21",
-					},
-				},
+				Containers: []corev1.Container{{Name: defaultTestImageName, Image: defaultTestImage}},
 			},
 		},
 	}
-
 	deployment := &appsv1.Deployment{ObjectMeta: meta, Spec: spec}
 	applyOptions(deployment, opts...)
 	Expect(K8sClient.Create(ctx, deployment)).To(Succeed())
 
-	waitForResourceReady(ctx, deployment)
+	CheckResourceReadiness(ctx, deployment)
 
-	deployment.TypeMeta = metav1.TypeMeta{
-		Kind:       "Deployment",
-		APIVersion: "apps/v1",
-	}
+	deployment.TypeMeta = metav1.TypeMeta{Kind: "Deployment", APIVersion: "apps/v1"}
 	return deployment
 }
 
-// CreateStatefulSet creates a StatefulSet resource in the specified namespace with the given name.
-func CreateStatefulSet(ctx context.Context, namespace, name string, opts ...Option) *appsv1.StatefulSet {
+// CreateStatefulSet creates and applies a StatefulSet in the specified namespace.
+func CreateStatefulSet(ctx context.Context, namespace, name string, opts ...Option) *appsv1.StatefulSet { // nolint:dupl
 	meta := metav1.ObjectMeta{
 		Name:        name,
 		Namespace:   namespace,
@@ -89,40 +81,27 @@ func CreateStatefulSet(ctx context.Context, namespace, name string, opts ...Opti
 		Labels:      map[string]string{"app": name},
 	}
 	spec := appsv1.StatefulSetSpec{
-		Replicas: testutils.Int32Ptr(1),
-		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{"app": name},
-		},
+		Replicas: Int32Ptr(1),
+		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": name}},
 		Template: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{"app": name},
-			},
+			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": name}},
 			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{
-					{
-						Name:  "nginx",
-						Image: "nginx:1.21",
-					},
-				},
+				Containers: []corev1.Container{{Name: defaultTestImageName, Image: defaultTestImage}},
 			},
 		},
 	}
-
 	statefulSet := &appsv1.StatefulSet{ObjectMeta: meta, Spec: spec}
 	applyOptions(statefulSet, opts...)
 	Expect(K8sClient.Create(ctx, statefulSet)).To(Succeed())
 
-	waitForResourceReady(ctx, statefulSet)
+	CheckResourceReadiness(ctx, statefulSet)
 
-	statefulSet.TypeMeta = metav1.TypeMeta{
-		Kind:       "StatefulSet",
-		APIVersion: "apps/v1",
-	}
+	statefulSet.TypeMeta = metav1.TypeMeta{Kind: "StatefulSet", APIVersion: "apps/v1"}
 	return statefulSet
 }
 
-// CreateDaemonSet creates a DaemonSet resource in the specified namespace with the given name.
-func CreateDaemonSet(ctx context.Context, namespace, name string, opts ...Option) *appsv1.DaemonSet {
+// CreateDaemonSet creates and applies a DaemonSet in the specified namespace.
+func CreateDaemonSet(ctx context.Context, namespace, name string, opts ...Option) *appsv1.DaemonSet { // nolint:dupl
 	meta := metav1.ObjectMeta{
 		Name:        name,
 		Namespace:   namespace,
@@ -130,99 +109,57 @@ func CreateDaemonSet(ctx context.Context, namespace, name string, opts ...Option
 		Labels:      map[string]string{"app": name},
 	}
 	spec := appsv1.DaemonSetSpec{
-		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{"app": name},
-		},
+		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": name}},
 		Template: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{"app": name},
-			},
+			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": name}},
 			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{
-					{
-						Name:  "nginx",
-						Image: "nginx:1.21",
-					},
-				},
+				Containers: []corev1.Container{{Name: defaultTestImageName, Image: defaultTestImage}},
 			},
 		},
 	}
-
 	daemonSet := &appsv1.DaemonSet{ObjectMeta: meta, Spec: spec}
 	applyOptions(daemonSet, opts...)
 	Expect(K8sClient.Create(ctx, daemonSet)).To(Succeed())
 
-	waitForResourceReady(ctx, daemonSet)
+	CheckResourceReadiness(ctx, daemonSet)
 
-	daemonSet.TypeMeta = metav1.TypeMeta{
-		Kind:       "DaemonSet",
-		APIVersion: "apps/v1",
-	}
+	daemonSet.TypeMeta = metav1.TypeMeta{Kind: "DaemonSet", APIVersion: "apps/v1"}
 	return daemonSet
 }
 
-// waitForResourceReady waits until the specified resource is ready.
-func waitForResourceReady(ctx context.Context, resource client.Object) {
-	By(fmt.Sprintf("waiting for %T %s/%s to be ready", resource, resource.GetNamespace(), resource.GetName()))
-	Eventually(func() bool {
-		// Fetch the resource from Kubernetes
-		err := K8sClient.Get(ctx, client.ObjectKey{Namespace: resource.GetNamespace(), Name: resource.GetName()}, resource)
-		if err != nil {
-			return false
-		}
-
-		// Check readiness based on the resource type
-		switch obj := resource.(type) {
-		case *appsv1.Deployment:
-			return obj.Status.ReadyReplicas == *obj.Spec.Replicas
-		case *appsv1.StatefulSet:
-			return obj.Status.ReadyReplicas == *obj.Spec.Replicas
-		case *appsv1.DaemonSet:
-			return obj.Status.NumberReady == obj.Status.DesiredNumberScheduled
-		default:
-			return false // Unsupported resource type
-		}
-	}, 2*time.Minute, 2*time.Second).Should(BeTrue(), fmt.Sprintf("%T %s/%s is not ready", resource, resource.GetNamespace(), resource.GetName()))
-}
-
-// GenerateUniqueName generates a unique name using a base string and a truncated UUID.
+// GenerateUniqueName returns a unique name based on the given base string and a truncated UUID.
 func GenerateUniqueName(base string) string {
 	return fmt.Sprintf("%s-%s", base, uuid.New().String()[:5])
 }
 
-// GenerateID generates an ID from Kind/namespace/name
+// GenerateID returns a string identifier in Kind/namespace/name format for a Kubernetes object.
 func GenerateID(obj client.Object) string {
-	gvk := obj.GetObjectKind().GroupVersionKind().Kind
-	return fmt.Sprintf("%s/%s/%s", gvk, obj.GetNamespace(), obj.GetName())
+	kind := obj.GetObjectKind().GroupVersionKind().Kind
+	return fmt.Sprintf("%s/%s/%s", kind, obj.GetNamespace(), obj.GetName())
 }
 
-// DeleteNamespaceIfExists deletes a namespace if it exists.
+// DeleteNamespaceIfExists deletes the given namespace if it exists.
 func DeleteNamespaceIfExists(namespace string) {
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
 	err := K8sClient.Delete(context.Background(), ns)
 	if err != nil && !kerrors.IsNotFound(err) {
-		Expect(err).ToNot(HaveOccurred(), "Failed to delete namespace")
+		Expect(err).ToNot(HaveOccurred(), "failed to delete namespace %q", namespace)
 	}
 }
 
-// DeleteResourcePods deletes all pods associated with a specific Kubernetes resource.
-func DeleteResourcePods(ctx context.Context, resource client.Object) error {
-	podList, err := ListPods(ctx, resource)
-	if err != nil {
-		return err
-	}
+// DeleteRandomPod deletes a random pod associated with the given resource.
+func DeleteRandomPod(ctx context.Context, resource client.Object) {
+	pods, err := ListPods(ctx, resource)
+	Expect(err).To(Succeed())
+	Expect(pods.Items).ToNot(BeEmpty(), "no pods found to delete")
 
-	for _, pod := range podList.Items {
-		if err := K8sClient.Delete(ctx, &pod); err != nil {
-			return fmt.Errorf("failed to delete pod %s/%s: %w", pod.Namespace, pod.Name, err)
-		}
-	}
-
-	return nil
+	pod := pods.Items[rand.Intn(len(pods.Items))]
+	By(fmt.Sprintf("Deleting pod %q", pod.Name))
+	Expect(K8sClient.Delete(ctx, &pod)).To(Succeed())
 }
 
-// ListPods lists all pods associated with a specific Kubernetes resource.
-func ListPods(ctx context.Context, resource client.Object) (podList *corev1.PodList, err error) {
+// ListPods returns all pods associated with a Deployment, StatefulSet, or DaemonSet.
+func ListPods(ctx context.Context, resource client.Object) (*corev1.PodList, error) {
 	var selector labels.Selector
 
 	switch res := resource.(type) {
@@ -236,75 +173,73 @@ func ListPods(ctx context.Context, resource client.Object) (podList *corev1.PodL
 		return nil, fmt.Errorf("unsupported resource type: %T", resource)
 	}
 
-	podList = &corev1.PodList{}
-	listOpts := []client.ListOption{
+	pods := &corev1.PodList{}
+	opts := []client.ListOption{
 		client.InNamespace(resource.GetNamespace()),
 		client.MatchingLabelsSelector{Selector: selector},
 	}
 
-	if err := K8sClient.List(ctx, podList, listOpts...); err != nil {
-		return nil, fmt.Errorf("failed to list pods for resource %s/%s: %w", resource.GetNamespace(), resource.GetName(), err)
+	if err := K8sClient.List(ctx, pods, opts...); err != nil {
+		return nil, fmt.Errorf("failed to list pods for %s/%s: %w", resource.GetNamespace(), resource.GetName(), err)
 	}
-	return podList, err
+
+	return pods, nil
 }
 
-// ScaleResource scales a given Kubernetes resource by updating its replica count.
-func ScaleResource(ctx context.Context, resource client.Object, replicas int32) error {
+// ScaleResource updates the replica count of a Deployment or StatefulSet.
+func ScaleResource(ctx context.Context, resource client.Object, replicas int32) {
 	patch := client.MergeFrom(resource.DeepCopyObject().(client.Object))
 
-	switch r := resource.(type) {
+	switch res := resource.(type) {
 	case *appsv1.Deployment:
-		r.Spec.Replicas = &replicas
+		res.Spec.Replicas = &replicas
 	case *appsv1.StatefulSet:
-		r.Spec.Replicas = &replicas
+		res.Spec.Replicas = &replicas
 	case *appsv1.DaemonSet:
-		return fmt.Errorf("DaemonSet does not support scaling via replicas")
+		panic("cannot scale a DaemonSet using replicas")
 	default:
-		return fmt.Errorf("unsupported resource type: %T", resource)
+		panic(fmt.Sprintf("unsupported resource type: %T", res))
 	}
 
-	return K8sClient.Patch(ctx, resource, patch)
+	Expect(K8sClient.Patch(ctx, resource, patch)).To(Succeed())
 }
 
-// RestartResource restarts a given Kubernetes resource by updating its template annotations.
+// RestartResource sets the restart annotation on the PodTemplateSpec of a resource.
 func RestartResource(ctx context.Context, resource client.Object) {
-	By(fmt.Sprintf("restarting %s", resource.GetName()))
+	By(fmt.Sprintf("Restarting %s %s/%s", resource.GetObjectKind().GroupVersionKind().Kind, resource.GetNamespace(), resource.GetName()))
 
 	patch := client.MergeFrom(resource.DeepCopyObject().(client.Object))
 	now := time.Now().Format(time.RFC3339)
 
+	var template *corev1.PodTemplateSpec
+
 	switch res := resource.(type) {
 	case *appsv1.Deployment:
-		if res.Spec.Template.Annotations == nil {
-			res.Spec.Template.Annotations = map[string]string{}
-		}
-		res.Spec.Template.Annotations[utils.RestartedAtKey] = now
+		template = &res.Spec.Template
 	case *appsv1.StatefulSet:
-		if res.Spec.Template.Annotations == nil {
-			res.Spec.Template.Annotations = map[string]string{}
-		}
-		res.Spec.Template.Annotations[utils.RestartedAtKey] = now
+		template = &res.Spec.Template
 	case *appsv1.DaemonSet:
-		if res.Spec.Template.Annotations == nil {
-			res.Spec.Template.Annotations = map[string]string{}
-		}
-		res.Spec.Template.Annotations[utils.RestartedAtKey] = now
+		template = &res.Spec.Template
 	default:
-		panic(fmt.Sprintf("unsupported resource type: %T", resource))
+		panic(fmt.Sprintf("unsupported resource type: %T", res))
 	}
 
-	err := K8sClient.Patch(ctx, resource, patch)
-	Expect(err).To(Succeed())
+	if template.Annotations == nil {
+		template.Annotations = map[string]string{}
+	}
+	template.Annotations[utils.RestartedAtKey] = now
+
+	Expect(K8sClient.Patch(ctx, resource, patch)).To(Succeed())
 }
 
-// CheckResourceReadiness validates that a Kubernetes resource is ready.
+// CheckResourceReadiness waits until a Deployment, StatefulSet, or DaemonSet is ready.
 func CheckResourceReadiness(ctx context.Context, resource client.Object) {
-	By(fmt.Sprintf("validating readiness of %T %s/%s", resource, resource.GetNamespace(), resource.GetName()))
+	By(fmt.Sprintf("Checking readiness of %T %s/%s", resource, resource.GetNamespace(), resource.GetName()))
+
 	Eventually(func() bool {
 		err := K8sClient.Get(ctx, client.ObjectKeyFromObject(resource), resource)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Check readiness based on resource type
 		switch obj := resource.(type) {
 		case *appsv1.Deployment:
 			return obj.Status.ReadyReplicas == *obj.Spec.Replicas
@@ -313,8 +248,8 @@ func CheckResourceReadiness(ctx context.Context, resource client.Object) {
 		case *appsv1.DaemonSet:
 			return obj.Status.NumberReady == obj.Status.DesiredNumberScheduled
 		default:
-			Fail(fmt.Sprintf("Unsupported resource type: %T", resource))
+			Fail(fmt.Sprintf("unsupported resource type: %T", resource))
 			return false
 		}
-	}, 2*time.Minute, 2*time.Second).Should(BeTrue(), fmt.Sprintf("%T readiness check failed for %s/%s", resource, resource.GetNamespace(), resource.GetName()))
+	}, 2*time.Minute, 2*time.Second).Should(BeTrue(), fmt.Sprintf("resource %T %s/%s did not become ready", resource, resource.GetNamespace(), resource.GetName()))
 }

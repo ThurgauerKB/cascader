@@ -35,12 +35,6 @@ type StatefulSetTarget struct {
 	kubeClient client.Client // Kubernetes client.
 }
 
-func (t *StatefulSetTarget) Kind() kinds.Kind        { return kinds.StatefulSetKind }
-func (t *StatefulSetTarget) Name() string            { return t.name }
-func (t *StatefulSetTarget) Namespace() string       { return t.namespace }
-func (t *StatefulSetTarget) Resource() client.Object { return &appsv1.StatefulSet{} }
-func (t *StatefulSetTarget) ID() string              { return utils.GenerateID(t.Kind(), t.namespace, t.name) }
-
 // NewStatefulSet creates a new StatefulSet target
 func NewStatefulSet(namespace, name string, c client.Client) *StatefulSetTarget {
 	return &StatefulSetTarget{
@@ -49,6 +43,12 @@ func NewStatefulSet(namespace, name string, c client.Client) *StatefulSetTarget 
 		kubeClient: c,
 	}
 }
+
+func (t *StatefulSetTarget) Kind() kinds.Kind        { return kinds.StatefulSetKind }
+func (t *StatefulSetTarget) Name() string            { return t.name }
+func (t *StatefulSetTarget) Namespace() string       { return t.namespace }
+func (t *StatefulSetTarget) Resource() client.Object { return &appsv1.StatefulSet{} }
+func (t *StatefulSetTarget) ID() string              { return utils.GenerateID(t.Kind(), t.namespace, t.name) }
 
 // Trigger updates the "restartedAt" annotation on the StatefulSet to target a rolling restart.
 func (t *StatefulSetTarget) Trigger(ctx context.Context) error {

@@ -63,9 +63,10 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 
 	log := b.Logger.WithValues("workloadID", id) // Append workload ID to logger context
 
-	// Check if the workload has been restarted since the last reconciliation.
-	if updated, restartedAt := restartMarkerUpdated(workload.PodTemplateSpec(), utils.RestartedAtKey, b.LastObservedRestartAnnotation); updated {
-		log.Info("Restart detected", "restartedAt", restartedAt)
+	// Detect workload restart
+	updated, restartedAt := restartMarkerUpdated(workload.PodTemplateSpec(), utils.RestartedAtKey, b.LastObservedRestartAnnotation)
+	if updated {
+		log.Info("Restart detected, handling targets", "restartedAt", restartedAt)
 
 		if err := b.patchRestartMarker(ctx, workload, restartedAt); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to patch restart annotation: %w", err)
@@ -81,7 +82,11 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 		log.Info("No targets found; skipping reload.")
 		return ctrl.Result{}, nil
 	}
-	metrics.Workloads.WithLabelValues(ns, name, kind).Set(float64(len(targets)))
+	if updated {
+		// 'updated' indicates a restart; log targets only in that case to avoid redundant logging on unstable workloads
+		log.Info("Dependent targets extracted", "targets", targetIDs(targets))
+	}
+	metrics.WorkloadTargets.WithLabelValues(ns, name, kind).Set(float64(len(targets)))
 
 	// Determine requeue interval.
 	dur, err := b.requeueDurationFor(res)
@@ -92,11 +97,13 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	// Detect and prevent dependency cycles.
 	if err := b.checkCycle(ctx, id, targets); err != nil {
 		if cycleErr, ok := err.(*CycleError); ok {
-			metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(1)
+			metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(metrics.CycleDetected)
 			b.Recorder.Eventf(res, corev1.EventTypeWarning, "CycleDetected", "Dependency cycle detected: %s", cycleErr.Path)
 		}
-		return ctrl.Result{}, fmt.Errorf("dependency cycle detected: %w", err)
+		log.Error(err, "Dependency cycle detected; skipping reload")
+		return ctrl.Result{}, nil // Do not return an error to avoid requeuing the workload.
 	}
+	metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(metrics.CycleNone) // Reset metric
 
 	// Ensure workload stability.
 	stable, reason := workload.Stable()
@@ -113,8 +120,7 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 		return ctrl.Result{}, nil // Do not return an error to avoid requeuing the workload.
 	}
 
-	metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(0) // Reset metric
-	log.Info("Triggered reloads", "succeeded", succ, "failed", fail)
+	log.Info("Finished handling targets", "succeeded", succ, "failed", fail)
 
 	return ctrl.Result{}, nil
 }
@@ -154,7 +160,7 @@ func (b *BaseReconciler) extractTargets(ctx context.Context, source client.Objec
 		for _, ref := range strings.Split(val, ",") {
 			ref = strings.TrimSpace(ref)
 			if ref == "" {
-				return nil, errors.New("targets cannot be empty")
+				continue
 			}
 
 			t, err := targets.NewTarget(ctx, b.KubeClient, kind, ref, source)

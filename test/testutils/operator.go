@@ -24,8 +24,8 @@ import (
 	"syscall"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2" // nolint:staticcheck
+	. "github.com/onsi/gomega"    // nolint:staticcheck
 )
 
 var (
@@ -33,7 +33,7 @@ var (
 	operatorCancel context.CancelFunc
 )
 
-// StartOperatorWithFlags starts the operator process with the given flags.
+// StartOperatorWithFlags starts the operator process with the given flags and checks that it is ready.
 func StartOperatorWithFlags(flags []string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	operatorCancel = cancel
@@ -51,7 +51,7 @@ func StartOperatorWithFlags(flags []string) {
 	operatorCmd = cmd
 
 	// Wait until Operator is ready
-	ContainsLogs("\"Deployment\",\"worker count\":1", 1*time.Minute, 2*time.Second)
+	CountLogOccurrences(`"worker count":\s*1`, 3, 90*time.Second, 2*time.Second)
 }
 
 // StopOperator stops the operator process.
@@ -64,4 +64,6 @@ func StopOperator() {
 		_ = syscall.Kill(-operatorCmd.Process.Pid, syscall.SIGKILL)
 		operatorCmd.Wait() // nolint:errcheck
 	}
+
+	LogBuffer.Reset()
 }
