@@ -21,21 +21,26 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
+const (
+	CycleNone = iota
+	CycleDetected
+)
+
 var (
-	// DependencyCyclesDetected tracks the number of active dependency cycles detected.
+	// DependencyCyclesDetected reports whether a dependency cycle was detected for a specific workload.
 	DependencyCyclesDetected = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "cascader_dependency_cycles_detected",
-			Help: "Current number of active dependency cycles detected by Cascader.",
+			Help: "Indicates whether a dependency cycle is currently detected for a specific workload (1 = cycle detected, 0 = no cycle).",
 		},
 		[]string{"namespace", "name", "resource_kind"},
 	)
 
-	// Workloads tracks the total number of workloads managed by Cascader.
-	Workloads = prometheus.NewGaugeVec(
+	// WorkloadTargets exposes the number of referenced workloads for each annotated workload managed by Cascader.
+	WorkloadTargets = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "cascader_workloads",
-			Help: "Workloads currently managed by Cascader.",
+			Name: "cascader_workload_targets",
+			Help: "Number of dependency targets extracted from a workload's annotations by Cascader.",
 		},
 		[]string{"namespace", "name", "resource_kind"},
 	)
@@ -53,7 +58,7 @@ var (
 func init() {
 	metrics.Registry.MustRegister(
 		DependencyCyclesDetected,
-		Workloads,
+		WorkloadTargets,
 		RestartsPerformed,
 	)
 }

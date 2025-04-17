@@ -209,23 +209,27 @@ If you do not want to use the default annotations, you can customize them by pas
 
 ## Prometheus Metrics
 
+Cascader exposes a set of Prometheus metrics to monitor dependency cycles, target relationships, and workload restarts.
+**Metrics are only emitted for workloads that have been processed by Cascader, typically after a restart has been detected.**
+This means metrics may not appear for all workloads immediately, but only for those that trigger reconciliation through annotated restart events.
+
 ### Available Metrics
 
 1. **Dependency Cycles Detected**
 
    - **Metric:** `cascader_dependency_cycles_detected`
-   - **Description:** Tracks active dependency cycles detected by Cascader.
+   - **Description:** Indicates whether a dependency cycle is currently detected for a specific workload (1 = cycle detected, 0 = no cycle).
    - **Labels:** `namespace`, `name`, `resource_kind`.
 
-2. **Workloads Managed**
+2. **Workloads Targets**
 
-   - **Metric:** `cascader_workloads`
-   - **Description:** Tracks the number of workloads managed by Cascader.
+   - **Metric:** `cascader_workload_targets`
+   - **Description:** Number of dependency targets extracted from a workload's annotations by Cascader.
    - **Labels:** `namespace`, `name`, `resource_kind`.
 
 3. **Restarts Performed**
    - **Metric:** `cascader_restarts_performed_total`
-   - **Description:** Tracks the total number of restarts triggered by Cascader.
+   - **Description:** Total number of restarts performed by Cascader.
    - **Labels:** `namespace`, `name`, `resource_kind`.
 
 ## Contributing
