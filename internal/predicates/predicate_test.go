@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
+	"github.com/thurgauerkb/cascader/internal/utils"
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
@@ -197,6 +198,51 @@ func TestNewPredicate(t *testing.T) {
 
 		result := predicate.Update(event)
 		assert.True(t, result, "UpdateFunc should return true for spec change")
+	})
+
+	t.Run("UpdateFunc - Rollout Restart Detected", func(t *testing.T) {
+		t.Parallel()
+
+		predicate := NewPredicate(annotationKindMap, SpecChanged)
+
+		oldObj := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					"cascader.tkb.ch/statefulset": "target",
+				},
+			},
+			Spec: appsv1.StatefulSetSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							utils.LastObservedRestartKey: "2025-01-14T12:00:00Z",
+						},
+					},
+				},
+			},
+		}
+
+		newObj := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					"cascader.tkb.ch/statefulset": "target",
+				},
+			},
+			Spec: appsv1.StatefulSetSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							utils.LastObservedRestartKey: "2025-01-14T12:30:00Z",
+						},
+					},
+				},
+			},
+		}
+
+		event := event.UpdateEvent{ObjectOld: oldObj, ObjectNew: newObj}
+
+		result := predicate.Update(event)
+		assert.True(t, result, "UpdateFunc should return true when rollout restart is detected")
 	})
 
 	t.Run("UpdateFunc - Missing Annotations", func(t *testing.T) {
