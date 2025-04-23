@@ -37,7 +37,7 @@ import (
 const (
 	DefaultTestImage       string = "nginx:1.21"
 	DefaultTestImageName   string = "nginx"
-	lastObservedRestartKey string = "kubectl.kubernetes.io/last-observed-restart"
+	lastObservedRestartKey string = "cascader.tkb.ch/last-observed-restart"
 )
 
 // K8sClient is the shared Kubernetes client used in e2e tests.
