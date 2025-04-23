@@ -172,8 +172,6 @@ This chaining of dependencies allows you to orchestrate multi-step rollouts auto
 - It does not confirm whether dependent workloads successfully restarted.
 - Use external monitoring tools for verification and reliability checks.
 
-Here’s a revised and well-structured **`Restart Detection`** section for your `README.md`, incorporating all relevant logic, clarifying behavior, and making it user-facing while avoiding internal implementation detail overload:
-
 ### Restart Detection
 
 `Cascader` tracks restart events of source workloads and coordinates dependent restarts accordingly. To do this, it monitors for meaningful changes to the workload that indicate a restart has occurred or is underway.
