@@ -21,6 +21,7 @@ import (
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
 	"github.com/thurgauerkb/cascader/internal/utils"
+	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -80,7 +81,10 @@ func TestWrapSingleObjectCheck(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.21"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},
@@ -115,7 +119,10 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.20"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},
@@ -129,7 +136,10 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.21"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},
@@ -156,7 +166,10 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.20"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},
@@ -172,7 +185,10 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.21"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: "latest",
+							},
 						},
 					},
 				},
@@ -182,6 +198,51 @@ func TestNewPredicate(t *testing.T) {
 
 		result := predicate.Update(event)
 		assert.True(t, result, "UpdateFunc should return true for spec change")
+	})
+
+	t.Run("UpdateFunc - Rollout Restart Detected", func(t *testing.T) {
+		t.Parallel()
+
+		predicate := NewPredicate(annotationKindMap, SpecChanged)
+
+		oldObj := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					"cascader.tkb.ch/statefulset": "target",
+				},
+			},
+			Spec: appsv1.StatefulSetSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							utils.LastObservedRestartKey: "2025-01-14T12:00:00Z",
+						},
+					},
+				},
+			},
+		}
+
+		newObj := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					"cascader.tkb.ch/statefulset": "target",
+				},
+			},
+			Spec: appsv1.StatefulSetSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							utils.LastObservedRestartKey: "2025-01-14T12:30:00Z",
+						},
+					},
+				},
+			},
+		}
+
+		event := event.UpdateEvent{ObjectOld: oldObj, ObjectNew: newObj}
+
+		result := predicate.Update(event)
+		assert.True(t, result, "UpdateFunc should return true when rollout restart is detected")
 	})
 
 	t.Run("UpdateFunc - Missing Annotations", func(t *testing.T) {
@@ -203,51 +264,6 @@ func TestNewPredicate(t *testing.T) {
 
 		result := predicate.Update(event)
 		assert.False(t, result, "UpdateFunc should return false for missing annotations")
-	})
-
-	t.Run("UpdateFunc - Rollout Restart Detected", func(t *testing.T) {
-		t.Parallel()
-
-		predicate := NewPredicate(annotationKindMap, RestartAnnotationChanged)
-
-		oldObj := &appsv1.StatefulSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{
-					"cascader.tkb.ch/statefulset": "target",
-				},
-			},
-			Spec: appsv1.StatefulSetSpec{
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{
-							utils.RestartedAtKey: "2025-01-14T12:00:00Z",
-						},
-					},
-				},
-			},
-		}
-
-		newObj := &appsv1.StatefulSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{
-					"cascader.tkb.ch/statefulset": "target",
-				},
-			},
-			Spec: appsv1.StatefulSetSpec{
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{
-							utils.RestartedAtKey: "2025-01-14T12:30:00Z",
-						},
-					},
-				},
-			},
-		}
-
-		event := event.UpdateEvent{ObjectOld: oldObj, ObjectNew: newObj}
-
-		result := predicate.Update(event)
-		assert.True(t, result, "UpdateFunc should return true when rollout restart is detected")
 	})
 
 	t.Run("DeleteFunc - Matching Annotations", func(t *testing.T) {
@@ -321,7 +337,10 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.21"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},
@@ -340,7 +359,10 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.21"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},

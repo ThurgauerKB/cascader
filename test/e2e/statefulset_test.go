@@ -86,6 +86,53 @@ var _ = Describe("StatefulSet workload", Ordered, func() {
 		)
 	})
 
+	It("Restart Pod twice", func(ctx SpecContext) {
+		obj1Name := testutils.GenerateUniqueName("sts1")
+		obj2Name := testutils.GenerateUniqueName("sts2")
+
+		obj1 := testutils.CreateStatefulSet(
+			ctx,
+			ns,
+			obj1Name,
+			testutils.WithAnnotation(statefulSetAnnotation, obj2Name),
+		)
+		obj1ID := testutils.GenerateID(obj1)
+
+		obj2 := testutils.CreateStatefulSet(
+			ctx,
+			ns,
+			obj2Name,
+		)
+		obj2ID := testutils.GenerateID(obj2)
+
+		testutils.RestartResource(ctx, obj1)
+
+		By(fmt.Sprintf("Fetches restart of %s", obj2ID))
+		testutils.ContainsLogs(
+			fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID),
+			30*time.Second,
+			2*time.Second,
+		)
+
+		testutils.DeleteRandomPod(ctx, obj1)
+
+		testutils.LogBuffer.Reset()
+
+		By(fmt.Sprintf("Detect restart of %s", obj1ID))
+		testutils.ContainsLogs(
+			fmt.Sprintf("%q,\"workloadID\":%q", restartDetectedMsg, obj1ID),
+			30*time.Second,
+			2*time.Second,
+		)
+
+		By(fmt.Sprintf("Fetches restart of %s", obj2ID))
+		testutils.ContainsLogs(
+			fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID),
+			30*time.Second,
+			2*time.Second,
+		)
+	})
+
 	It("Delete Pod with multiple replicas", func(ctx SpecContext) {
 		obj1Name := testutils.GenerateUniqueName("sts1")
 		obj2Name := testutils.GenerateUniqueName("sts2")

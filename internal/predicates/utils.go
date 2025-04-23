@@ -22,7 +22,6 @@ import (
 	"hash/fnv"
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
-	"github.com/thurgauerkb/cascader/internal/utils"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -54,37 +53,16 @@ func SpecChanged(oldObj, newObj client.Object) bool {
 		return false
 	}
 
-	// Copy and clear annotations to exclude them from the comparison
-	// DeepCopy ensures we don't accidentally modify the original object
-	oldTplCopy := oldTpl.DeepCopy()
-	oldTplCopy.Annotations = nil
-	newTplCopy := newTpl.DeepCopy()
-	newTplCopy.Annotations = nil
-
-	oldHash, err := hashTemplate(*oldTplCopy)
+	oldHash, err := hashTemplate(*oldTpl)
 	if err != nil {
 		return false
 	}
-	newHash, err := hashTemplate(*newTplCopy)
+	newHash, err := hashTemplate(*newTpl)
 	if err != nil {
 		return false
 	}
 
 	return oldHash != newHash
-}
-
-// RestartAnnotationChanged returns true if the "restartedAt" annotation differs
-// between the old and new objects, indicating that a rollout restart was triggered.
-func RestartAnnotationChanged(oldObj, newObj client.Object) bool {
-	oldTpl, err := extractPodTemplate(oldObj)
-	if err != nil {
-		return false
-	}
-	newTpl, err := extractPodTemplate(newObj)
-	if err != nil {
-		return false
-	}
-	return oldTpl.Annotations[utils.RestartedAtKey] != newTpl.Annotations[utils.RestartedAtKey]
 }
 
 // extractPodTemplate extracts the PodTemplateSpec from a supported resource.

@@ -17,11 +17,9 @@ limitations under the License.
 package controller
 
 import (
-	"time"
-
 	"github.com/thurgauerkb/cascader/internal/targets"
 
-	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // targetIDs returns the list of IDs for a slice of targets.
@@ -33,20 +31,12 @@ func targetIDs(ts []targets.Target) []string {
 	return ids
 }
 
-// restartMarkerUpdated returns true if the annotation for restartedAtKey differs from lastObservedRestartKey.
-// If restartedAtKey is missing, it assumes a restart and returns the current timestamp.
-func restartMarkerUpdated(podTemplate *corev1.PodTemplateSpec, restartedAtKey, lastObservedRestartKey string) (bool, string) {
-	annotations := podTemplate.GetAnnotations()
-	if annotations == nil {
-		return true, time.Now().Format(time.RFC3339)
+// hasAnnotation reports whether a annotation is present.
+func hasAnnotation(obj client.Object, key string) bool {
+	ann := obj.GetAnnotations()
+	if ann == nil {
+		return false
 	}
-
-	restartedAt, lastObservedAt := annotations[restartedAtKey], annotations[lastObservedRestartKey]
-
-	return restartMarkerChanged(restartedAt, lastObservedAt), restartedAt
-}
-
-// restartMarkerChanged reports whether restartedAt differs from lastObservedAt.
-func restartMarkerChanged(restartedAt, lastObservedAt string) bool {
-	return restartedAt != "" && (lastObservedAt == "" || restartedAt != lastObservedAt)
+	_, found := ann[key]
+	return found
 }

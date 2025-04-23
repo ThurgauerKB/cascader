@@ -138,8 +138,8 @@ func TestStatefulSetTarget_Reload(t *testing.T) {
 		updatedStatefulSet := &appsv1.StatefulSet{}
 		_ = fakeClient.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "test-statefulset"}, updatedStatefulSet)
 
-		assert.Contains(t, updatedStatefulSet.Spec.Template.Annotations, utils.RestartedAtKey)
-		assert.NotEmpty(t, updatedStatefulSet.Spec.Template.Annotations[utils.RestartedAtKey])
+		assert.Contains(t, updatedStatefulSet.Spec.Template.Annotations, utils.LastObservedRestartKey)
+		assert.NotEmpty(t, updatedStatefulSet.Spec.Template.Annotations[utils.LastObservedRestartKey])
 	})
 
 	t.Run("Patch Error", func(t *testing.T) {

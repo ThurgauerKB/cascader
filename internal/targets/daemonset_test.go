@@ -142,8 +142,8 @@ func TestDaemonSetTarget_Reload(t *testing.T) {
 		updatedDaemonSet := &appsv1.DaemonSet{}
 		_ = fakeClient.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "test-daemonset"}, updatedDaemonSet)
 
-		assert.Contains(t, updatedDaemonSet.Spec.Template.Annotations, utils.RestartedAtKey)
-		assert.NotEmpty(t, updatedDaemonSet.Spec.Template.Annotations[utils.RestartedAtKey])
+		assert.Contains(t, updatedDaemonSet.Spec.Template.Annotations, utils.LastObservedRestartKey)
+		assert.NotEmpty(t, updatedDaemonSet.Spec.Template.Annotations[utils.LastObservedRestartKey])
 	})
 
 	t.Run("Patch Error", func(t *testing.T) {

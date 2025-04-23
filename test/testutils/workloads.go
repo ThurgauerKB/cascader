@@ -22,8 +22,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/thurgauerkb/cascader/internal/utils"
-
 	. "github.com/onsi/ginkgo/v2" // nolint:staticcheck
 	. "github.com/onsi/gomega"    // nolint:staticcheck
 
@@ -37,8 +35,9 @@ import (
 )
 
 const (
-	defaultTestImage     string = "nginx:1.21"
-	defaultTestImageName string = "nginx"
+	DefaultTestImage       string = "nginx:1.21"
+	DefaultTestImageName   string = "nginx"
+	lastObservedRestartKey string = "cascader.tkb.ch/last-observed-restart"
 )
 
 // K8sClient is the shared Kubernetes client used in e2e tests.
@@ -58,7 +57,7 @@ func CreateDeployment(ctx context.Context, namespace, name string, opts ...Optio
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": name}},
 			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{{Name: defaultTestImageName, Image: defaultTestImage}},
+				Containers: []corev1.Container{{Name: DefaultTestImageName, Image: DefaultTestImage}},
 			},
 		},
 	}
@@ -86,7 +85,7 @@ func CreateStatefulSet(ctx context.Context, namespace, name string, opts ...Opti
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": name}},
 			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{{Name: defaultTestImageName, Image: defaultTestImage}},
+				Containers: []corev1.Container{{Name: DefaultTestImageName, Image: DefaultTestImage}},
 			},
 		},
 	}
@@ -113,7 +112,7 @@ func CreateDaemonSet(ctx context.Context, namespace, name string, opts ...Option
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": name}},
 			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{{Name: defaultTestImageName, Image: defaultTestImage}},
+				Containers: []corev1.Container{{Name: DefaultTestImageName, Image: DefaultTestImage}},
 			},
 		},
 	}
@@ -227,7 +226,7 @@ func RestartResource(ctx context.Context, resource client.Object) {
 	if template.Annotations == nil {
 		template.Annotations = map[string]string{}
 	}
-	template.Annotations[utils.RestartedAtKey] = now
+	template.Annotations[lastObservedRestartKey] = now
 
 	Expect(K8sClient.Patch(ctx, resource, patch)).To(Succeed())
 }

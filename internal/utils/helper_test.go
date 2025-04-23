@@ -19,10 +19,12 @@ package utils
 import (
 	"context"
 	"testing"
+	"time"
+
+	"github.com/thurgauerkb/cascader/internal/kinds"
+	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thurgauerkb/cascader/internal/kinds"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,6 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+const lastObservedRestartKey string = "cascader.tkb.ch/last-observed-restart"
 
 func TestUniqueAnnotations(t *testing.T) {
 	t.Parallel()
@@ -265,8 +269,7 @@ func TestPatchPodTemplateAnnotation(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = appsv1.AddToScheme(scheme)
 
-	key := "cascader.tkb.ch/lastObservedRestart"
-	value := "2024-04-03T12:00:00Z"
+	now := time.Now().Format(time.RFC3339)
 
 	t.Run("Successful Patch", func(t *testing.T) {
 		t.Parallel()
@@ -285,7 +288,7 @@ func TestPatchPodTemplateAnnotation(t *testing.T) {
 					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "app", Image: "nginx"},
+							{Name: "app", Image: testutils.DefaultTestImage},
 						},
 					},
 				},
@@ -294,15 +297,15 @@ func TestPatchPodTemplateAnnotation(t *testing.T) {
 
 		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dep).Build()
 
-		err := PatchPodTemplateAnnotation(ctx, cl, dep, &dep.Spec.Template, key, value)
+		err := PatchPodTemplateAnnotation(ctx, cl, dep, &dep.Spec.Template, lastObservedRestartKey, now)
 		assert.NoError(t, err, "expected no error when patching")
 
-		assert.Equal(t, value, dep.Spec.Template.Annotations[key])
+		assert.Equal(t, now, dep.Spec.Template.Annotations[lastObservedRestartKey])
 
 		var patched appsv1.Deployment
 		err = cl.Get(ctx, client.ObjectKeyFromObject(dep), &patched)
 		assert.NoError(t, err)
-		assert.Equal(t, value, patched.Spec.Template.Annotations[key])
+		assert.Equal(t, now, patched.Spec.Template.Annotations[lastObservedRestartKey])
 	})
 
 	t.Run("Invalid Object Type", func(t *testing.T) {
@@ -318,8 +321,234 @@ func TestPatchPodTemplateAnnotation(t *testing.T) {
 
 		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
 
-		err := PatchPodTemplateAnnotation(ctx, cl, invalid, &corev1.PodTemplateSpec{}, key, value)
+		err := PatchPodTemplateAnnotation(ctx, cl, invalid, &corev1.PodTemplateSpec{}, lastObservedRestartKey, now)
 
 		assert.Error(t, err, "expected error when patching unsupported object")
+	})
+}
+
+func TestPatchWorkloadAnnotation(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	_ = appsv1.AddToScheme(scheme)
+
+	now := time.Now().Format(time.RFC3339)
+
+	t.Run("Successful Patch", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+
+		dep := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "test-deploy",
+				Namespace:   "default",
+				Annotations: map[string]string{},
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{Name: "app", Image: testutils.DefaultTestImage},
+						},
+					},
+				},
+			},
+		}
+
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dep).Build()
+
+		err := PatchWorkloadAnnotation(ctx, cl, dep, lastObservedRestartKey, now)
+		assert.NoError(t, err, "expected no error when patching")
+
+		assert.Equal(t, now, dep.Annotations[lastObservedRestartKey])
+
+		var patched appsv1.Deployment
+		err = cl.Get(ctx, client.ObjectKeyFromObject(dep), &patched)
+		assert.NoError(t, err)
+		assert.Equal(t, now, patched.Annotations[lastObservedRestartKey])
+	})
+
+	t.Run("Invalid Object Type", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+		invalid := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod1",
+				Namespace: "default",
+			},
+		}
+
+		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+
+		err := PatchWorkloadAnnotation(ctx, cl, invalid, lastObservedRestartKey, now)
+
+		assert.Error(t, err, "expected error when patching unsupported object")
+	})
+}
+
+func TestDeleteWorkloadAnnotation(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	_ = appsv1.AddToScheme(scheme)
+
+	now := time.Now().Format(time.RFC3339)
+
+	t.Run("Successful Delete", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+
+		dep := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-deploy",
+				Namespace: "default",
+				Annotations: map[string]string{
+					lastObservedRestartKey: now,
+				},
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{Name: "app", Image: testutils.DefaultTestImage},
+						},
+					},
+				},
+			},
+		}
+
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dep).Build()
+
+		err := DeleteWorkloadAnnotation(ctx, cl, dep, lastObservedRestartKey)
+		assert.NoError(t, err, "expected no error when deleting annotation")
+
+		var updated appsv1.Deployment
+		err = cl.Get(ctx, client.ObjectKeyFromObject(dep), &updated)
+		assert.NoError(t, err, "failed to get updated deployment")
+
+		result, exists := updated.Annotations[lastObservedRestartKey]
+		assert.False(t, exists, "annotation should be deleted")
+		assert.Equal(t, "", result, "annotation value should be the same as the original")
+	})
+
+	t.Run("Successful Delete (no annotation)", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+
+		dep := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "test-deploy",
+				Namespace:   "default",
+				Annotations: map[string]string{},
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{Name: "app", Image: testutils.DefaultTestImage},
+						},
+					},
+				},
+			},
+		}
+
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dep).Build()
+
+		err := DeleteWorkloadAnnotation(ctx, cl, dep, lastObservedRestartKey)
+		assert.NoError(t, err, "expected no error when deleting annotation")
+
+		var updated appsv1.Deployment
+		err = cl.Get(ctx, client.ObjectKeyFromObject(dep), &updated)
+		assert.NoError(t, err, "failed to get updated deployment")
+
+		result, exists := updated.Annotations[lastObservedRestartKey]
+		assert.False(t, exists, "annotation should be deleted")
+		assert.Equal(t, "", result, "annotation value should be the same as the original")
+	})
+
+	t.Run("Keeps unrelated annotations", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+
+		dep := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-deploy",
+				Namespace: "default",
+				Annotations: map[string]string{
+					lastObservedRestartKey: now,
+					"other-restartedAtKey": "keep-me",
+				},
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{Name: "app", Image: testutils.DefaultTestImage},
+						},
+					},
+				},
+			},
+		}
+
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dep).Build()
+
+		err := DeleteWorkloadAnnotation(ctx, cl, dep, lastObservedRestartKey)
+		assert.NoError(t, err, "expected no error when deleting annotation")
+
+		var updated appsv1.Deployment
+		err = cl.Get(ctx, client.ObjectKeyFromObject(dep), &updated)
+		assert.NoError(t, err, "failed to get updated deployment")
+
+		_, deleted := updated.Annotations[lastObservedRestartKey]
+		assert.False(t, deleted, "deleted restartedAtKey should not exist")
+
+		val, kept := updated.Annotations["other-restartedAtKey"]
+		assert.True(t, kept, "unrelated annotation should remain")
+		assert.Equal(t, "keep-me", val, "unrelated annotation value should be intact")
+	})
+
+	t.Run("Patch failure", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+
+		dep := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-deploy",
+				Namespace: "default",
+				Annotations: map[string]string{
+					lastObservedRestartKey: now,
+				},
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{Name: "app", Image: testutils.DefaultTestImage},
+						},
+					},
+				},
+			},
+		}
+
+		baseClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dep).Build()
+		mockClient := &testutils.MockClientWithError{
+			Client: baseClient,
+			PatchErrorFor: testutils.NamedError{
+				Name:      "test-deploy",
+				Namespace: "default",
+			},
+		}
+
+		err := DeleteWorkloadAnnotation(ctx, mockClient, dep, lastObservedRestartKey)
+		assert.Error(t, err, "expected error when patch fails")
+		assert.Contains(t, err.Error(), "failed to delete annotation", "error should include context")
+		assert.Contains(t, err.Error(), lastObservedRestartKey, "error should mention the last-observed-restart")
 	})
 }

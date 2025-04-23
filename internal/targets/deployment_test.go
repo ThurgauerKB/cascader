@@ -140,8 +140,8 @@ func TestDeploymentTarget_Reload(t *testing.T) {
 		updatedDeployment := &appsv1.Deployment{}
 		_ = fakeClient.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "test-deployment"}, updatedDeployment)
 
-		assert.Contains(t, updatedDeployment.Spec.Template.Annotations, utils.RestartedAtKey)
-		assert.NotEmpty(t, updatedDeployment.Spec.Template.Annotations[utils.RestartedAtKey])
+		assert.Contains(t, updatedDeployment.Spec.Template.Annotations, utils.LastObservedRestartKey)
+		assert.NotEmpty(t, updatedDeployment.Spec.Template.Annotations[utils.LastObservedRestartKey])
 	})
 
 	t.Run("Patch Error", func(t *testing.T) {

@@ -39,11 +39,12 @@ var (
 )
 
 const (
-	successfullTriggerTargetMsg string = "Successfully triggered reload"
-	restartDetectedMsg          string = "Restart detected, handling targets"
-	deploymentAnnotation        string = "cascader.tkb.ch/deployment"
-	statefulSetAnnotation       string = "cascader.tkb.ch/statefulset"
-	daemonSetAnnotation         string = "cascader.tkb.ch/daemonset"
+	successfullTriggerTargetMsg   string = "Successfully triggered reload"
+	restartDetectedMsg            string = "Restart detected, handling targets"
+	deploymentAnnotation          string = "cascader.tkb.ch/deployment"
+	statefulSetAnnotation         string = "cascader.tkb.ch/statefulset"
+	daemonSetAnnotation           string = "cascader.tkb.ch/daemonset"
+	lastObservedRestartAnnotation string = "cascader.tkb.ch/last-observed-restart"
 )
 
 func TestE2E(t *testing.T) {

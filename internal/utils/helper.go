@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const RestartedAtKey string = "kubectl.kubernetes.io/restartedAt"
+const LastObservedRestartKey string = "kubectl.kubernetes.io/last-observed-restart"
 
 // UniqueAnnotations ensures all provided annotation values are unique.
 // Returns an error if the map is empty or if any duplicate values are found.
@@ -123,5 +123,59 @@ func PatchPodTemplateAnnotation(
 		return fmt.Errorf("failed to patch annotation %q=%q: %w", key, value, err)
 	}
 
+	return nil
+}
+
+// PatchWorkloadAnnotation updates the given annotation key in the pod metatdata
+// and patches the parent object using server-side merge.
+func PatchWorkloadAnnotation(
+	ctx context.Context,
+	c client.Client,
+	obj client.Object,
+	key, value string,
+) error {
+	// Make a deep copy of the object before mutating it
+	original := obj.DeepCopyObject().(client.Object)
+
+	// Safely get and modify the annotations
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+	annotations[key] = value
+	obj.SetAnnotations(annotations)
+
+	// Apply patch using MergeFrom
+	if err := c.Patch(ctx, obj, client.MergeFrom(original)); err != nil {
+		return fmt.Errorf("failed to patch annotation %q=%q: %w", key, value, err)
+	}
+
+	return nil
+}
+
+// DeleteWorkloadAnnotation removes the specified annotation key from the Pods metadata
+// and patches the parent object using a server-side strategic merge.
+func DeleteWorkloadAnnotation(
+	ctx context.Context,
+	c client.Client,
+	obj client.Object,
+	key string,
+) error {
+	// Deep copy for patch base
+	original := obj.DeepCopyObject().(client.Object)
+
+	// Copy annotations so mutation is safe
+	annotations := map[string]string{}
+	for k, v := range obj.GetAnnotations() {
+		if k != key {
+			annotations[k] = v
+		}
+	}
+	obj.SetAnnotations(annotations)
+
+	// Apply patch using MergeFrom
+	if err := c.Patch(ctx, obj, client.MergeFrom(original)); err != nil {
+		return fmt.Errorf("failed to delete annotation %q: %w", key, err)
+	}
 	return nil
 }
