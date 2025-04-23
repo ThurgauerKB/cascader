@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
-	"github.com/thurgauerkb/cascader/internal/utils"
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
@@ -168,100 +167,6 @@ func TestSpecChanged(t *testing.T) {
 
 		result := SpecChanged(oldPod, newPod)
 		assert.False(t, result, "Expected isSpecChange to return false when template extraction fails")
-	})
-}
-
-func TestRestartAnnotationChanged(t *testing.T) {
-	t.Parallel()
-
-	t.Run("No change in restartedAt", func(t *testing.T) {
-		t.Parallel()
-
-		restartedAt := "2025-02-22T12:00:00Z"
-		depOld := &appsv1.Deployment{
-			Spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{
-							utils.LastObservedRestartKey: restartedAt,
-						},
-					},
-				},
-			},
-		}
-
-		// Deep copy to simulate an updated object with the same annotation.
-		depNew := depOld.DeepCopy()
-
-		changed := RestartAnnotationChanged(depOld, depNew)
-		assert.False(t, changed, "expected false when restartedAt annotation is unchanged")
-	})
-
-	t.Run("Changed restartedAt annotation", func(t *testing.T) {
-		t.Parallel()
-
-		depOld := &appsv1.Deployment{
-			Spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{
-							utils.LastObservedRestartKey: "2025-02-22T12:00:00Z",
-						},
-					},
-				},
-			},
-		}
-
-		depNew := depOld.DeepCopy()
-		depNew.Spec.Template.Annotations[utils.LastObservedRestartKey] = "2025-02-22T12:05:00Z"
-
-		changed := RestartAnnotationChanged(depOld, depNew)
-		assert.True(t, changed, "expected true when restartedAt annotation has changed")
-	})
-
-	t.Run("Missing restartedAt annotation", func(t *testing.T) {
-		t.Parallel()
-
-		// Both objects without the restartedAt annotation.
-		depOld := &appsv1.Deployment{
-			Spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{},
-					},
-				},
-			},
-		}
-
-		depNew := depOld.DeepCopy()
-
-		changed := RestartAnnotationChanged(depOld, depNew)
-		assert.False(t, changed, "expected false when restartedAt annotation missing on both")
-
-		// New object now has the restartedAt annotation.
-		depNew.Spec.Template.Annotations = map[string]string{
-			utils.LastObservedRestartKey: "2025-02-22T12:05:00Z",
-		}
-
-		changed = RestartAnnotationChanged(depOld, depNew)
-		assert.True(t, changed, "expected true when restartedAt annotation is added")
-	})
-
-	t.Run("Unsupported object type", func(t *testing.T) {
-		t.Parallel()
-
-		// Using a Pod, which is unsupported by extractPodTemplate.
-		pod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{
-					utils.LastObservedRestartKey: "2025-02-22T12:00:00Z",
-				},
-			},
-		}
-		pod2 := pod.DeepCopy()
-
-		changed := RestartAnnotationChanged(pod, pod2)
-		assert.False(t, changed, "expected false for unsupported object type")
 	})
 }
 

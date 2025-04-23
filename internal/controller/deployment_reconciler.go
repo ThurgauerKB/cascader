@@ -60,7 +60,6 @@ func (r *DeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(predicates.NewPredicate(
 			r.AnnotationKindMap,
 			predicates.SpecChanged,
-			predicates.RestartAnnotationChanged,
 			predicates.SingleReplicaPodDeleted,
 			predicates.ScaledToZero,
 			predicates.ScaledFromZero,
