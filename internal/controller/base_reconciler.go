@@ -63,12 +63,13 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 
 	log := b.Logger.WithValues("workloadID", id) // Append workload ID to logger context
 
-	// Detect workload restart
-	updated, restartedAt := restartMarkerUpdated(workload.PodTemplateSpec(), utils.RestartedAtKey, b.LastObservedRestartAnnotation)
-	if updated {
-		log.Info("Restart detected, handling targets", "restartedAt", restartedAt)
-
-		if err := b.patchRestartMarker(ctx, workload, restartedAt); err != nil {
+	// If the last-observed-restart annotation is not present, this is the first time the workload is being processed.
+	// The annotation will be removed after a successful reconciliation.
+	observed := hasAnnotation(res, b.LastObservedRestartAnnotation)
+	if !observed {
+		now := time.Now().Format(time.RFC3339)
+		log.Info("Restart detected, handling targets", "restartedAt", now)
+		if err := b.setLastObservedRestartAnnotation(ctx, workload, now); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to patch restart annotation: %w", err)
 		}
 	}
@@ -78,15 +79,17 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to create targets: %w", err)
 	}
+	// Set the number of targets as a metric, even if no targets are found.
+	metrics.WorkloadTargets.WithLabelValues(ns, name, kind).Set(float64(len(targets)))
+
 	if len(targets) == 0 {
 		log.Info("No targets found; skipping reload.")
 		return ctrl.Result{}, nil
 	}
-	if updated {
-		// 'updated' indicates a restart; log targets only in that case to avoid redundant logging on unstable workloads
+	if !observed {
+		// Log targets only when restart was just detected.
 		log.Info("Dependent targets extracted", "targets", targetIDs(targets))
 	}
-	metrics.WorkloadTargets.WithLabelValues(ns, name, kind).Set(float64(len(targets)))
 
 	// Determine requeue interval.
 	dur, err := b.requeueDurationFor(res)
@@ -94,7 +97,7 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 		log.Error(err, fmt.Sprintf("Invalid requeue annotation, using default: %s", b.RequeueAfterDefault))
 	}
 
-	// Detect and prevent dependency cycles.
+	// Check for and handle circular dependencies among workloads to prevent infinite reload loops.
 	if err := b.checkCycle(ctx, id, targets); err != nil {
 		if cycleErr, ok := err.(*CycleError); ok {
 			metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(metrics.CycleDetected)
@@ -103,9 +106,10 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 		log.Error(err, "Dependency cycle detected; skipping reload")
 		return ctrl.Result{}, nil // Do not return an error to avoid requeuing the workload.
 	}
-	metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(metrics.CycleNone) // Reset metric
+	// Reset dependency cycle metric to indicate no cycle was detected.
+	metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(metrics.CycleNone)
 
-	// Ensure workload stability.
+	// Check if the workload is in a stable state before triggering reloads.
 	stable, reason := workload.Stable()
 	if !stable {
 		log.Info(fmt.Sprintf("Workload not stable. Requeuing after %s.", dur), "reason", reason)
@@ -113,11 +117,18 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	}
 	log.Info("Workload is stable", "reason", reason)
 
-	// Attempt target reloads.
+	// Always remove the restartedAt annotation, even if target reloads will fail.
+	if err := b.clearLastObservedRestartAnnotation(ctx, workload); err != nil {
+		b.Logger.Error(err, "Failed to delete restartedAt annotation")
+	}
+
+	// Trigger reloads on all dependent targets and collect success/failure counts.
 	succ, fail := b.triggerReloads(ctx, workload, targets)
 	if fail > 0 {
+		// Some targets failed to reload. We log the error but do not return it,
+		// to avoid requeuing the workload unnecessarily.
 		log.Error(errors.New("partial target reload failure"), "Some targets failed to reload", "succeeded", succ, "failed", fail)
-		return ctrl.Result{}, nil // Do not return an error to avoid requeuing the workload.
+		return ctrl.Result{}, nil
 	}
 
 	log.Info("Finished handling targets", "succeeded", succ, "failed", fail)
@@ -125,29 +136,41 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	return ctrl.Result{}, nil
 }
 
-// patchRestartMarker updates the restart annotation in the workload's PodTemplateSpec.
-func (b *BaseReconciler) patchRestartMarker(
+// setLastObservedRestartAnnotation sets the last-observed-restart annotation on the given workload.
+func (b *BaseReconciler) setLastObservedRestartAnnotation(
 	ctx context.Context,
 	workload workloads.Workload,
-	restartedAt string,
+	value string,
 ) error {
-	return utils.PatchPodTemplateAnnotation(
+	return utils.PatchWorkloadAnnotation(
 		ctx,
 		b.KubeClient,
 		workload.Resource(),
-		workload.PodTemplateSpec(),
 		b.LastObservedRestartAnnotation,
-		restartedAt,
+		value,
 	)
 }
 
-// extractTargets creates targets for a workload based on annotations.
+// clearLastObservedRestartAnnotation removes the last-observed-restart annotation from the given workload.
+func (b *BaseReconciler) clearLastObservedRestartAnnotation(
+	ctx context.Context,
+	workload workloads.Workload,
+) error {
+	return utils.DeleteWorkloadAnnotation(
+		ctx,
+		b.KubeClient,
+		workload.Resource(),
+		b.LastObservedRestartAnnotation,
+	)
+}
+
+// extractTargets parses annotations to extract dependent workload targets.
 func (b *BaseReconciler) extractTargets(ctx context.Context, source client.Object) ([]targets.Target, error) {
-	var created []targets.Target
+	var targetList []targets.Target
 
 	annotations := source.GetAnnotations()
 	if annotations == nil {
-		return created, nil
+		return targetList, nil
 	}
 
 	for key, kind := range b.AnnotationKindMap {
@@ -167,11 +190,11 @@ func (b *BaseReconciler) extractTargets(ctx context.Context, source client.Objec
 			if err != nil {
 				return nil, fmt.Errorf("cannot create target for workload: %w", err)
 			}
-			created = append(created, t)
+			targetList = append(targetList, t)
 		}
 	}
 
-	return created, nil
+	return targetList, nil
 }
 
 // requeueDurationFor determines requeue interval from annotations or falls back to default.

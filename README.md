@@ -171,7 +171,42 @@ This chaining of dependencies allows you to orchestrate multi-step rollouts auto
 - `Cascader` triggers restarts by updating the `kubectl.kubernetes.io/restartedAt` annotation in `.Spec.Template.Annotations`.
 - It does not confirm whether dependent workloads successfully restarted.
 - Use external monitoring tools for verification and reliability checks.
-- `Cascader` also writes the `cascader.tkb.ch/last-observed-restart` annotation to `.spec.template.annotations` to track whether a restart was already handled.
+
+Here’s a revised and well-structured **`Restart Detection`** section for your `README.md`, incorporating all relevant logic, clarifying behavior, and making it user-facing while avoiding internal implementation detail overload:
+
+### Restart Detection
+
+`Cascader` tracks restart events of source workloads and coordinates dependent restarts accordingly. To do this, it monitors for meaningful changes to the workload that indicate a restart has occurred or is underway.
+
+When such a change is detected, `Cascader` sets the annotation:
+
+```yaml
+cascader.tkb.ch/last-observed-restart: "<timestamp>"
+```
+
+in the `.metadata.annotations` of the source workload. This annotation acts as a **signal** that a restart has been observed and dependent workloads may need to be reloaded. Once the source workload is verified to be **stable**, the annotation is automatically removed.
+
+#### Conditions that trigger restart detection include:
+
+- **A change to the Pod template specification (`.spec.template`)**, including:
+  - Image changes
+  - Command or environment updates
+  - **Annotations inside `.spec.template.metadata.annotations`**, such as those set by `kubectl rollout restart`
+- **A change to the restart-specific annotation**, typically:
+  - `kubectl.kubernetes.io/restartedAt`
+- **Scaling events**, including:
+  - Scaling from zero (workload was previously inactive)
+  - Scaling to zero (resetting all Pods)
+- **For single-replica workloads**:
+  - If the sole Pod is deleted and no longer ready or available
+- **For DaemonSets**:
+  - If not all desired Pods are updated or available (indicating an update is rolling out)
+
+#### Notes
+
+- `Cascader` does **not** respond to arbitrary Pod restarts (e.g., if 1 Pod out of 5 is restarted due to node eviction or OOM).
+- This detection is **best-effort**: it assumes well-behaved workloads and does not verify Pod-level success.
+- External monitoring tools should be used to ensure full reliability and correctness of dependent restarts.
 
 ### Cycle Detection
 

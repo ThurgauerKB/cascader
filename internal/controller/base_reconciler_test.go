@@ -76,7 +76,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = appsv1.AddToScheme(scheme)
 
-	restartedAt := "2024-04-03T12:00:00Z"
+	now := time.Now().Format(time.RFC3339)
 
 	t.Run("Invalid Workload Kind", func(t *testing.T) {
 		t.Parallel()
@@ -441,7 +441,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							utils.RestartedAtKey: restartedAt,
+							utils.LastObservedRestartKey: now,
 						},
 					},
 				},
@@ -620,7 +620,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		assert.Contains(t, logOutput, failedTriggerTargetMsg, "Expected log to contain failure message for notfound-deployment")
 	})
 
-	t.Run("Error patching workload (LastObservedRestart)", func(t *testing.T) {
+	t.Run("Error patching workload (Transitioning)", func(t *testing.T) {
 		t.Parallel()
 
 		obj := &appsv1.Deployment{
@@ -642,7 +642,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							utils.RestartedAtKey: restartedAt,
+							utils.LastObservedRestartKey: now,
 						},
 					},
 				},
@@ -668,16 +668,16 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		assert.Error(t, err)
 		expectedResult := ctrl.Result{}
 		assert.Equal(t, expectedResult, result, "Expected successful result")
-		assert.EqualError(t, err, fmt.Sprintf("failed to patch restart annotation: failed to patch annotation \"cascader.tkb.ch/last-observed-restart\"=%q: simulated patch error", restartedAt))
+		assert.EqualError(t, err, fmt.Sprintf("failed to patch restart annotation: failed to patch annotation \"cascader.tkb.ch/last-observed-restart\"=%q: simulated patch error", now))
 	})
 }
 
-func TestPatchRestartMarker(t *testing.T) {
+func TestSetLastObservedRestartAnnotation(t *testing.T) {
 	t.Parallel()
 
 	scheme := runtime.NewScheme()
 	_ = appsv1.AddToScheme(scheme)
-	restartedAt := "2024-04-03T12:00:00Z"
+	now := time.Now().Format(time.RFC3339)
 
 	t.Run("Successful patch", func(t *testing.T) {
 		t.Parallel()
@@ -687,14 +687,8 @@ func TestPatchRestartMarker(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-deployment",
 				Namespace: "default",
-			},
-			Spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{
-							utils.RestartedAtKey: restartedAt,
-						},
-					},
+				Annotations: map[string]string{
+					utils.LastObservedRestartKey: now,
 				},
 			},
 		}
@@ -704,15 +698,53 @@ func TestPatchRestartMarker(t *testing.T) {
 		workload, err := workloads.NewWorkload(dep)
 		assert.NoError(t, err)
 
-		err = reconciler.patchRestartMarker(ctx, workload, restartedAt)
+		err = reconciler.setLastObservedRestartAnnotation(ctx, workload, "true")
 		assert.NoError(t, err)
 
 		// Confirm annotation was set
 		var updated appsv1.Deployment
 		err = reconciler.KubeClient.Get(ctx, client.ObjectKeyFromObject(dep), &updated)
 		assert.NoError(t, err)
-		observed := updated.Spec.Template.Annotations[reconciler.LastObservedRestartAnnotation]
+		observed := updated.Annotations[reconciler.LastObservedRestartAnnotation]
 		assert.NotEmpty(t, observed)
+	})
+}
+
+func TestClearLastObservedRestartAnnotation(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	_ = appsv1.AddToScheme(scheme)
+	now := time.Now().Format(time.RFC3339)
+
+	t.Run("Successful patch", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+
+		dep := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-deployment",
+				Namespace: "default",
+				Annotations: map[string]string{
+					utils.LastObservedRestartKey: now,
+				},
+			},
+		}
+
+		reconciler := createBaseReconciler(dep)
+
+		workload, err := workloads.NewWorkload(dep)
+		assert.NoError(t, err)
+
+		err = reconciler.clearLastObservedRestartAnnotation(ctx, workload)
+		assert.NoError(t, err)
+
+		// Confirm annotation was set
+		var updated appsv1.Deployment
+		err = reconciler.KubeClient.Get(ctx, client.ObjectKeyFromObject(dep), &updated)
+		assert.NoError(t, err)
+		observed := updated.Annotations[reconciler.LastObservedRestartAnnotation]
+		assert.Empty(t, observed)
 	})
 }
 

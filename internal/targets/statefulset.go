@@ -64,7 +64,7 @@ func (t *StatefulSetTarget) Trigger(ctx context.Context) error {
 		t.kubeClient,
 		sts,
 		&sts.Spec.Template,
-		utils.RestartedAtKey,
+		utils.LastObservedRestartKey,
 		time.Now().Format(time.RFC3339),
 	); err != nil {
 		return fmt.Errorf("failed to patch StatefulSet %s/%s: %w", t.namespace, t.name, err)

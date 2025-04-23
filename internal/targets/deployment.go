@@ -64,7 +64,7 @@ func (t *DeploymentTarget) Trigger(ctx context.Context) error {
 		t.kubeClient,
 		dep,
 		&dep.Spec.Template,
-		utils.RestartedAtKey,
+		utils.LastObservedRestartKey,
 		time.Now().Format(time.RFC3339),
 	); err != nil {
 		return fmt.Errorf("failed to patch Deployment %s/%s: %w", t.namespace, t.name, err)

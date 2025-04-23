@@ -21,6 +21,7 @@ import (
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
 	"github.com/thurgauerkb/cascader/internal/utils"
+	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -80,7 +81,10 @@ func TestWrapSingleObjectCheck(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.21"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},
@@ -115,7 +119,10 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.20"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},
@@ -129,7 +136,10 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.21"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},
@@ -156,7 +166,10 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.20"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},
@@ -172,7 +185,10 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.21"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: "latest",
+							},
 						},
 					},
 				},
@@ -220,7 +236,7 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							utils.RestartedAtKey: "2025-01-14T12:00:00Z",
+							utils.LastObservedRestartKey: "2025-01-14T12:00:00Z",
 						},
 					},
 				},
@@ -237,7 +253,7 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							utils.RestartedAtKey: "2025-01-14T12:30:00Z",
+							utils.LastObservedRestartKey: "2025-01-14T12:30:00Z",
 						},
 					},
 				},
@@ -321,7 +337,10 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.21"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},
@@ -340,7 +359,10 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.21"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},

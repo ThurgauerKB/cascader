@@ -84,7 +84,7 @@ func RestartAnnotationChanged(oldObj, newObj client.Object) bool {
 	if err != nil {
 		return false
 	}
-	return oldTpl.Annotations[utils.RestartedAtKey] != newTpl.Annotations[utils.RestartedAtKey]
+	return oldTpl.Annotations[utils.LastObservedRestartKey] != newTpl.Annotations[utils.LastObservedRestartKey]
 }
 
 // extractPodTemplate extracts the PodTemplateSpec from a supported resource.

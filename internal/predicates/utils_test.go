@@ -94,7 +94,10 @@ func TestSpecChanged(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.20"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},
@@ -106,7 +109,10 @@ func TestSpecChanged(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.21"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: "latest",
+							},
 						},
 					},
 				},
@@ -125,7 +131,10 @@ func TestSpecChanged(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.21"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},
@@ -137,7 +146,10 @@ func TestSpecChanged(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							{Name: "nginx", Image: "nginx:1.21"},
+							{
+								Name:  testutils.DefaultTestImageName,
+								Image: testutils.DefaultTestImage,
+							},
 						},
 					},
 				},
@@ -171,7 +183,7 @@ func TestRestartAnnotationChanged(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							utils.RestartedAtKey: restartedAt,
+							utils.LastObservedRestartKey: restartedAt,
 						},
 					},
 				},
@@ -193,7 +205,7 @@ func TestRestartAnnotationChanged(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							utils.RestartedAtKey: "2025-02-22T12:00:00Z",
+							utils.LastObservedRestartKey: "2025-02-22T12:00:00Z",
 						},
 					},
 				},
@@ -201,7 +213,7 @@ func TestRestartAnnotationChanged(t *testing.T) {
 		}
 
 		depNew := depOld.DeepCopy()
-		depNew.Spec.Template.Annotations[utils.RestartedAtKey] = "2025-02-22T12:05:00Z"
+		depNew.Spec.Template.Annotations[utils.LastObservedRestartKey] = "2025-02-22T12:05:00Z"
 
 		changed := RestartAnnotationChanged(depOld, depNew)
 		assert.True(t, changed, "expected true when restartedAt annotation has changed")
@@ -228,7 +240,7 @@ func TestRestartAnnotationChanged(t *testing.T) {
 
 		// New object now has the restartedAt annotation.
 		depNew.Spec.Template.Annotations = map[string]string{
-			utils.RestartedAtKey: "2025-02-22T12:05:00Z",
+			utils.LastObservedRestartKey: "2025-02-22T12:05:00Z",
 		}
 
 		changed = RestartAnnotationChanged(depOld, depNew)
@@ -242,7 +254,7 @@ func TestRestartAnnotationChanged(t *testing.T) {
 		pod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{
-					utils.RestartedAtKey: "2025-02-22T12:00:00Z",
+					utils.LastObservedRestartKey: "2025-02-22T12:00:00Z",
 				},
 			},
 		}
