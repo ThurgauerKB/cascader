@@ -44,12 +44,6 @@ func (e *HelpError) Error() string {
 	return e.Message
 }
 
-// Is checks whether the target error is of type HelpRequested.
-func (e *HelpError) Is(target error) bool {
-	_, ok := target.(*HelpError)
-	return ok
-}
-
 // Config holds all configuration options for the application.
 type Config struct {
 	WatchNamespaces               []string      // Namespaces to watch

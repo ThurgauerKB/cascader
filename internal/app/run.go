@@ -53,8 +53,9 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	// Parse and validate command-line arguments
 	cfg, err := config.ParseArgs(args, out, version)
 	if err != nil {
-		if errors.Is(err, &config.HelpError{}) {
-			fmt.Fprintln(out, err.Error()) // nolint:errcheck
+		var helpErr *config.HelpError
+		if errors.As(err, &helpErr) {
+			fmt.Fprintln(out, helpErr.Error()) // nolint:errcheck
 			return nil
 		}
 		return fmt.Errorf("error parsing arguments: %w", err)

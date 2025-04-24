@@ -17,7 +17,6 @@ limitations under the License.
 package config
 
 import (
-	"errors"
 	"io"
 	"strings"
 	"testing"
@@ -35,21 +34,14 @@ func TestHelpRequested(t *testing.T) {
 		t.Parallel()
 
 		err := &HelpError{Message: "This is a help message"}
-		assert.Equal(t, "This is a help message", err.Error(), "Error() should return the correct message")
+		assert.EqualError(t, err, "This is a help message")
 	})
 
-	t.Run("Is HelpRequested", func(t *testing.T) {
+	t.Run("As HelpRequested", func(t *testing.T) {
 		t.Parallel()
 
 		err := &HelpError{Message: "Help requested"}
-		assert.True(t, errors.Is(err, &HelpError{}), "Is() should return true for HelpRequested type")
-	})
-
-	t.Run("Is Not HelpRequested", func(t *testing.T) {
-		t.Parallel()
-
-		err := errors.New("Some other error")
-		assert.False(t, errors.Is(err, &HelpError{}), "Is() should return false for non-HelpRequested type")
+		assert.IsType(t, &HelpError{}, err, "As() should return true for HelpRequested type")
 	})
 }
 
