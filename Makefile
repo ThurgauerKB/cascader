@@ -3,7 +3,6 @@ SED := $(shell if [ "$(shell uname)" = "Darwin" ]; then echo gsed; else echo sed
 
 # VERSION defines the project version, extracted from cmd/main.go without leading 'v'.
 VERSION := $(shell awk -F'"' '/const version/{gsub(/^v/, "", $$2); print $$2}' cmd/main.go)
-
 # ENVTEST_K8S_VERSION refers to the version of kbebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
 
@@ -48,7 +47,6 @@ GINKGO_VERSION ?= v2.23.4
 all: build
 
 ##@ General
-
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
@@ -96,13 +94,14 @@ tag: ## Tag the current commit with the current version if no tag exists and the
 ##@ Development
 
 .PHONY: download
-download: ## Download go packages
+download: ## Download go packages and list them.
 	go mod download
+	go list -m all
 
-.PHONY: update-packages
-update-packages: ## Update all Go packages to their latest versions
-	go get -u ./...
+.PHONY: verify-deps
+verify-deps: ## Verify go.mod and go.sum are tidy
 	go mod tidy
+	git diff --exit-code go.mod go.sum
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -249,6 +248,8 @@ $(LOCALBIN)/ginkgo: $(LOCALBIN)
 # $1 - target path with name of binary
 # $2 - package url which can be installed
 # $3 - specific version of package
+tools: ginkgo envtest golangci-lint yamlfmt kind ## Install all tools
+
 define go-install-tool
 @[ -f "$(1)-$(3)" ] || { \
 set -e; \
