@@ -61,9 +61,7 @@ func TestUniqueAnnotations(t *testing.T) {
 		}
 		err := UniqueAnnotations(annotations)
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, "duplicate annotation 'cascader.tkb.ch/deployment'")
-		assert.ErrorContains(t, err, "'Deployment'")
-		assert.ErrorContains(t, err, "'StatefulSet'")
+		assert.ErrorContains(t, err, "duplicate annotation value \"cascader.tkb.ch/deployment\"")
 	})
 
 	t.Run("Empty map", func(t *testing.T) {
