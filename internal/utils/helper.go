@@ -40,11 +40,11 @@ func UniqueAnnotations(annotations map[string]string) error {
 	}
 
 	seen := make(map[string]string, len(annotations))
-	for key, val := range annotations {
-		if existingKey, exists := seen[val]; exists {
-			return fmt.Errorf("duplicate annotation '%s' found for keys '%s' and '%s'", val, existingKey, key)
+	for k, v := range annotations {
+		if dupKey, ok := seen[v]; ok {
+			return fmt.Errorf("duplicate annotation value %q found for keys %q and %q", v, dupKey, k)
 		}
-		seen[val] = key
+		seen[v] = k
 	}
 	return nil
 }
@@ -164,13 +164,9 @@ func DeleteWorkloadAnnotation(
 	// Deep copy for patch base
 	original := obj.DeepCopyObject().(client.Object)
 
-	// Copy annotations so mutation is safe
-	annotations := map[string]string{}
-	for k, v := range obj.GetAnnotations() {
-		if k != key {
-			annotations[k] = v
-		}
-	}
+	// Delete annotation by key
+	annotations := obj.GetAnnotations()
+	delete(annotations, key)
 	obj.SetAnnotations(annotations)
 
 	// Apply patch using MergeFrom
