@@ -35,7 +35,7 @@ GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-runtime
 ENVTEST_VERSION ?= release-0.18
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION ?= v2.1.3
+GOLANGCI_LINT_VERSION ?= v2.1.5
 # renovate: datasource=github-releases depName=google/yamlfmt
 YAMLFMT_VERSION ?= v0.16.0
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind
