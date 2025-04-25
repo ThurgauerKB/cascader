@@ -34,9 +34,12 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	"k8s.io/klog/v2"
 )
 
 var scheme = runtime.NewScheme()
@@ -59,12 +62,14 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	}
 
 	// Configure logging
-	logger, err := logging.InitLogging(cfg, out)
+	logger, err := logging.SetupLogger(cfg, out)
 	if err != nil {
 		return fmt.Errorf("error setting up logger: %w", err)
 	}
+	log.SetLogger(logger)
+	klog.SetLogger(logger) // Redirect klog to use zap
+	setupLog := ctrl.Log.WithName("setup")
 
-	setupLog := logger.WithName("setup")
 	setupLog.Info("initializing cascader", "version", version)
 
 	// Configure HTTP/2 settings

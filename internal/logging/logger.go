@@ -20,82 +20,43 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/go-logr/logr"
 	"github.com/thurgauerkb/cascader/internal/config"
 
-	"github.com/go-logr/logr"
 	uzap "go.uber.org/zap"
 	zapcore "go.uber.org/zap/zapcore"
-	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-const (
-	EncoderJSON    string = "json"
-	EncoderConsole string = "console"
-
-	LevelInfo  string = "info"
-	LevelError string = "error"
-	LevelPanic string = "panic"
-)
-
-// InitLogging initializes logging based on provided configuration.
-func InitLogging(cfg config.Config, out io.Writer) (logr.Logger, error) {
-	logger, err := setupLogger(cfg, out)
-	if err != nil {
-		return logr.Logger{}, err
-	}
-
-	log.SetLogger(logger)
-	klog.SetLogger(logger)
-
-	return logger, nil
-}
-
-// setupLogger configures and returns a logr.Logger based on given configuration.
-func setupLogger(cfg config.Config, out io.Writer) (logr.Logger, error) {
-	encoder, err := encoder(cfg.LogEncoder)
-	if err != nil {
-		return logr.Logger{}, err
-	}
-
-	stackLevel, err := stacktraceLevel(cfg.LogStacktraceLevel)
-	if err != nil {
-		return logr.Logger{}, err
-	}
-
+// SetupLogger initializes and configures the logger based on the provided config.
+func SetupLogger(cfg config.Config, out io.Writer) (logr.Logger, error) {
 	opts := zap.Options{
-		Development:     cfg.LogDev,
-		DestWriter:      out,
-		Encoder:         encoder,
-		StacktraceLevel: stackLevel,
+		Development: cfg.LogDev,
+		DestWriter:  out,
 	}
+
+	// Set log encoder format
+	encoders := map[string]zapcore.Encoder{
+		"json":    zapcore.NewJSONEncoder(uzap.NewProductionEncoderConfig()),
+		"console": zapcore.NewConsoleEncoder(uzap.NewDevelopmentEncoderConfig()),
+	}
+	encoder, ok := encoders[cfg.LogEncoder]
+	if !ok {
+		return logr.Logger{}, fmt.Errorf("invalid log encoder: %q", cfg.LogEncoder)
+	}
+	opts.Encoder = encoder
+
+	// Set stacktrace level
+	levels := map[string]uzap.AtomicLevel{
+		"info":  uzap.NewAtomicLevelAt(uzap.InfoLevel),
+		"error": uzap.NewAtomicLevelAt(uzap.ErrorLevel),
+		"panic": uzap.NewAtomicLevelAt(uzap.PanicLevel),
+	}
+	level, ok := levels[cfg.LogStacktraceLevel]
+	if !ok {
+		return logr.Logger{}, fmt.Errorf("invalid stacktrace level: %q", cfg.LogStacktraceLevel)
+	}
+	opts.StacktraceLevel = level
 
 	return zap.New(zap.UseFlagOptions(&opts)), nil
-}
-
-// encoder returns the appropriate zapcore.Encoder based on name.
-func encoder(name string) (zapcore.Encoder, error) {
-	switch name {
-	case EncoderJSON:
-		return zapcore.NewJSONEncoder(uzap.NewProductionEncoderConfig()), nil
-	case EncoderConsole:
-		return zapcore.NewConsoleEncoder(uzap.NewDevelopmentEncoderConfig()), nil
-	default:
-		return nil, fmt.Errorf("invalid log encoder: %q", name)
-	}
-}
-
-// stacktraceLevel returns the appropriate zap.AtomicLevel based on the provided name.
-func stacktraceLevel(level string) (uzap.AtomicLevel, error) {
-	switch level {
-	case LevelInfo:
-		return uzap.NewAtomicLevelAt(uzap.InfoLevel), nil
-	case LevelError:
-		return uzap.NewAtomicLevelAt(uzap.ErrorLevel), nil
-	case LevelPanic:
-		return uzap.NewAtomicLevelAt(uzap.PanicLevel), nil
-	default:
-		return uzap.AtomicLevel{}, fmt.Errorf("invalid stacktrace level: %q", level)
-	}
 }
