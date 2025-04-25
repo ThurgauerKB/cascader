@@ -25,7 +25,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-const version string = "v0.2.3"
+const version string = "v0.2.4"
 
 func main() {
 	ctx := ctrl.SetupSignalHandler()
