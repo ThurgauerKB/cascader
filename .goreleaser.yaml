@@ -13,6 +13,9 @@ builds:
     goarch:
       - amd64
     dir: ./cmd
+    ldflags:
+      - -s -w
+      - -X main.Version={{ .Tag }}
 dockers:
   - image_templates:
       - ghcr.io/thurgauerkb/cascader:latest

@@ -25,12 +25,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-const version string = "v0.2.4"
+const Version string = "dev"
 
 func main() {
 	ctx := ctrl.SetupSignalHandler()
 
-	if err := app.Run(ctx, version, os.Args[1:], os.Stdout); err != nil {
+	if err := app.Run(ctx, Version, os.Args[1:], os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

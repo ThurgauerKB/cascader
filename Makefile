@@ -51,45 +51,39 @@ all: build
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-##@ Versioning
+##@ Tagging
 
-.PHONY: patch
-patch: ## Increment the patch version (x.y.Z -> x.y.(Z+1)).
-	@NEW_VERSION=$(shell echo $(VERSION) | awk -F. '{print $$1"."$$2"."$$3+1}') && \
-	$(SED) -i -E "s/(const version string = \"v)[^\"]+/\1$${NEW_VERSION}/" cmd/main.go && \
-	$(MAKE) update-version VERSION=$${NEW_VERSION}
+# Find the latest tag (with prefix filter if defined, default to 0.0.0 if none found)
+# Lazy evaluation ensures fresh values on every run
+VERSION_PREFIX ?= v
+LATEST_TAG = $(shell git tag --list "$(VERSION_PREFIX)*" --sort=-v:refname | head -n 1)
+VERSION = $(shell [ -n "$(LATEST_TAG)" ] && echo $(LATEST_TAG) | sed "s/^$(VERSION_PREFIX)//" || echo "0.0.0")
 
-.PHONY: minor
-minor: ## Increment the minor version (x.Y.z -> x.(Y+1).0).
-	@NEW_VERSION=$(shell echo $(VERSION) | awk -F. '{print $$1"."$$2+1".0"}') && \
-	$(SED) -i -E "s/(const version string = \"v)[^\"]+/\1$${NEW_VERSION}/" cmd/main.go && \
-	$(MAKE) update-version VERSION=$${NEW_VERSION}
+patch: ## Create a new patch release (x.y.Z+1)
+	@NEW_VERSION=$$(echo "$(VERSION)" | awk -F. '{printf "%d.%d.%d", $$1, $$2, $$3+1}') && \
+	$(MAKE) update-version VERSION=$${NEW_VERSION} && \
+	echo "Tagged $(VERSION_PREFIX)$${NEW_VERSION}"
 
-.PHONY: major
-major: ## Increment the major version (X.y.z -> (X+1).0.0).
-	@NEW_VERSION=$(shell echo $(VERSION) | awk -F. '{print $$1+1".0.0"}') && \
-	$(SED) -i -E "s/(const version string = \"v)[^\"]+/\1$${NEW_VERSION}/" cmd/main.go && \
-	$(MAKE) update-version VERSION=$${NEW_VERSION}
+minor: ## Create a new minor release (x.Y+1.0)
+	@NEW_VERSION=$$(echo "$(VERSION)" | awk -F. '{printf "%d.%d.0", $$1, $$2+1}') && \
+	$(MAKE) update-version VERSION=$${NEW_VERSION} && \
+	echo "Tagged $(VERSION_PREFIX)$${NEW_VERSION}"
+
+major: ## Create a new major release (X+1.0.0)
+	@NEW_VERSION=$$(echo "$(VERSION)" | awk -F. '{printf "%d.0.0", $$1+1}') && \
+	$(MAKE) update-version VERSION=$${NEW_VERSION} && \
+	echo "Tagged $(VERSION_PREFIX)$${NEW_VERSION}"
+
+tag: ## Show latest tag
+	@echo "Latest version: $(LATEST_TAG)"
+
+push: ## Push tags to remote
+	git push --tags
 
 .PHONY: update-version
 update-version: ## Update deployment manifests with the new version.
-	@echo "Updating version to $(VERSION)"
 	@find deploy/kubernetes -type f -name '*.yaml' -exec $(SED) -i -E "s/(image:\s*.*cascader:).*/\1v$(VERSION)/" {} \;
 	@$(SED) -i -E "s/(appVersion\:)\s.*/\1 v$(VERSION)/" deploy/kubernetes/chart/cascader/Chart.yaml
-
-.PHONY: tag
-tag: ## Tag the current commit with the current version if no tag exists and the repository is clean.
-	@if [ -n "$(shell git status --porcelain)" ]; then \
-		echo "Repository has uncommitted changes. Please commit or stash them before tagging."; \
-		exit 1; \
-	fi
-	@if [ -z "$(shell git tag --list v$(VERSION))" ]; then \
-		echo "Tagging version v$(VERSION)"; \
-		git tag v$(VERSION); \
-		git push origin v$(VERSION); \
-	else \
-		echo "Tag v$(VERSION) already exists."; \
-	fi
 
 ##@ Development
 
