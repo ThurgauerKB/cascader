@@ -61,19 +61,16 @@ VERSION = $(shell [ -n "$(LATEST_TAG)" ] && echo $(LATEST_TAG) | sed "s/^$(VERSI
 
 patch: ## Create a new patch release (x.y.Z+1)
 	@NEW_VERSION=$$(echo "$(VERSION)" | awk -F. '{printf "%d.%d.%d", $$1, $$2, $$3+1}') && \
-	git tag "$(VERSION_PREFIX)$${NEW_VERSION}" && \
 	$(MAKE) update-version VERSION=$${NEW_VERSION} && \
 	echo "Tagged $(VERSION_PREFIX)$${NEW_VERSION}"
 
 minor: ## Create a new minor release (x.Y+1.0)
 	@NEW_VERSION=$$(echo "$(VERSION)" | awk -F. '{printf "%d.%d.0", $$1, $$2+1}') && \
-	git tag "$(VERSION_PREFIX)$${NEW_VERSION}" && \
 	$(MAKE) update-version VERSION=$${NEW_VERSION} && \
 	echo "Tagged $(VERSION_PREFIX)$${NEW_VERSION}"
 
 major: ## Create a new major release (X+1.0.0)
 	@NEW_VERSION=$$(echo "$(VERSION)" | awk -F. '{printf "%d.0.0", $$1+1}') && \
-	git tag "$(VERSION_PREFIX)$${NEW_VERSION}" && \
 	$(MAKE) update-version VERSION=$${NEW_VERSION} && \
 	echo "Tagged $(VERSION_PREFIX)$${NEW_VERSION}"
 
