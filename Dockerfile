@@ -32,3 +32,11 @@ COPY --from=builder /workspace/cascader .
 USER nonroot:nonroot
 
 ENTRYPOINT ["/cascader"]
+
+FROM gcr.io/distroless/static:nonroot
+
+WORKDIR /
+COPY --from=builder /heartbeats ./
+USER 65532:65532
+
+ENTRYPOINT ["./heartbeats"]
