@@ -32,4 +32,3 @@ COPY --from=builder /workspace/cascader .
 USER 65532:65532
 
 ENTRYPOINT ["/cascader"]
-
