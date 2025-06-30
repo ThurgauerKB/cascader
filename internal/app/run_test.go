@@ -83,7 +83,7 @@ func TestRun(t *testing.T) {
 		err := Run(ctx, "v0.0.0", args, out)
 
 		assert.NoError(t, err)
-		assert.Equal(t, out.String(), "Cascader version v0.0.0\n")
+		assert.Equal(t, "Cascader version v0.0.0", out.String())
 	})
 
 	t.Run("Logger error", func(t *testing.T) {

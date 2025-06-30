@@ -33,15 +33,15 @@ func TestHelpRequested(t *testing.T) {
 	t.Run("Error Message", func(t *testing.T) {
 		t.Parallel()
 
-		err := &HelpError{Message: "This is a help message"}
+		err := &HelpRequested{Message: "This is a help message"}
 		assert.EqualError(t, err, "This is a help message")
 	})
 
 	t.Run("As HelpRequested", func(t *testing.T) {
 		t.Parallel()
 
-		err := &HelpError{Message: "Help requested"}
-		assert.IsType(t, &HelpError{}, err, "As() should return true for HelpRequested type")
+		err := &HelpRequested{Message: "Help requested"}
+		assert.IsType(t, &HelpRequested{}, err, "As() should return true for HelpRequested type")
 	})
 }
 
@@ -134,7 +134,7 @@ func TestParseArgs(t *testing.T) {
 		var output strings.Builder
 		_, err := ParseArgs(args, &output, "0.0.0")
 
-		assert.IsType(t, &HelpError{}, err)
+		assert.IsType(t, &HelpRequested{}, err)
 		assert.Error(t, err)
 	})
 
@@ -145,7 +145,7 @@ func TestParseArgs(t *testing.T) {
 		var output strings.Builder
 		_, err := ParseArgs(args, &output, "0.0.0")
 
-		assert.IsType(t, &HelpError{}, err)
+		assert.IsType(t, &HelpRequested{}, err)
 		assert.Error(t, err)
 		assert.EqualError(t, err, "Cascader version 0.0.0")
 	})

@@ -19,7 +19,6 @@ package app
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
 
@@ -46,19 +45,18 @@ func init() {
 }
 
 // Run is the main function of the application.
-func Run(ctx context.Context, version string, args []string, out io.Writer) error {
+func Run(ctx context.Context, version string, args []string, w io.Writer) error {
 	// Parse and validate command-line arguments
-	cfg, err := config.ParseArgs(args, out, version)
+	cfg, err := config.ParseArgs(args, w, version)
 	if err != nil {
-		if errors.As(err, new(*config.HelpError)) {
-			fmt.Fprintln(out, err.Error()) // nolint:errcheck
+		if config.IsHelpRequested(err, w) {
 			return nil
 		}
 		return fmt.Errorf("error parsing arguments: %w", err)
 	}
 
 	// Configure logging
-	logger, err := logging.InitLogging(cfg, out)
+	logger, err := logging.InitLogging(cfg, w)
 	if err != nil {
 		return fmt.Errorf("error setting up logger: %w", err)
 	}

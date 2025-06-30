@@ -34,15 +34,13 @@ const (
 	requeueAfterAnnotation        string = "cascader.tkb.ch/requeue-after"
 )
 
-// HelpError represents a special error type to indicate that help was requested.
-type HelpError struct {
+// HelpRequested represents a special error type to indicate that help was requested.
+type HelpRequested struct {
 	Message string
 }
 
 // Error returns the error message.
-func (e *HelpError) Error() string {
-	return e.Message
-}
+func (e *HelpRequested) Error() string { return e.Message }
 
 // Config holds all configuration options for the application.
 type Config struct {
@@ -128,10 +126,10 @@ func ParseArgs(args []string, out io.Writer, version string) (Config, error) {
 
 	// Handle --help and --version
 	if showHelp {
-		return Config{}, &HelpError{Message: captureUsage(fs)}
+		return Config{}, &HelpRequested{Message: captureUsage(fs)}
 	}
 	if showVersion {
-		return Config{}, &HelpError{Message: fmt.Sprintf("%s version %s", fs.Name(), version)}
+		return Config{}, &HelpRequested{Message: fmt.Sprintf("%s version %s", fs.Name(), version)}
 	}
 
 	return cfg, nil
