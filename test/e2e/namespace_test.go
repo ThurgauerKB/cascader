@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/ginkgo/v2" // nolint:staticcheck
 )
 
-var _ = Describe("Operator watching multiple namespaces", Ordered, func() {
+var _ = Describe("Operator watching multiple namespaces", Serial, Ordered, func() {
 	AfterEach(func(ctx SpecContext) {
 		testutils.NSManager.Cleanup(ctx)
 		testutils.StopOperator()
