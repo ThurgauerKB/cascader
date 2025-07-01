@@ -422,7 +422,7 @@ var _ = Describe("Deployment workload", Ordered, func() {
 		By(fmt.Sprintf("Scaling up %s from %d to %d", obj1ID, obj1.Spec.Replicas, newReplicas))
 		testutils.ScaleResource(ctx, obj1, newReplicas)
 
-		testutils.CheckResourceReadiness(ctx, obj1)
+		testutils.CheckResourceReadiness(ctx, obj1, true)
 
 		By(fmt.Sprintf("Detect restart of %s", obj1ID))
 		testutils.ContainsNotLogs(
@@ -464,7 +464,7 @@ var _ = Describe("Deployment workload", Ordered, func() {
 		By(fmt.Sprintf("scaling up %s from %d to %d", obj1ID, obj1.Spec.Replicas, newReplicas))
 		testutils.ScaleResource(ctx, obj1, newReplicas)
 
-		testutils.CheckResourceReadiness(ctx, obj1)
+		testutils.CheckResourceReadiness(ctx, obj1, true)
 
 		By(fmt.Sprintf("Detect restart of %s", obj1ID))
 		testutils.ContainsLogs(
