@@ -18,6 +18,7 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -141,4 +142,14 @@ func captureUsage(fs *flag.FlagSet) string {
 	fs.SetOutput(&buf)
 	fs.Usage()
 	return buf.String()
+}
+
+// IsHelpRequested checks if the error is a HelpRequested sentinel and prints it.
+func IsHelpRequested(err error, w io.Writer) bool {
+	var helpErr *HelpRequested
+	if errors.As(err, &helpErr) {
+		fmt.Fprint(w, helpErr.Error()) // nolint:errcheck
+		return true
+	}
+	return false
 }
