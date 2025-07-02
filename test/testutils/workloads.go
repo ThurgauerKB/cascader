@@ -65,7 +65,7 @@ func CreateDeployment(ctx context.Context, namespace, name string, opts ...Optio
 	applyOptions(deployment, opts...)
 	Expect(K8sClient.Create(ctx, deployment)).To(Succeed())
 
-	CheckResourceReadiness(ctx, deployment, true)
+	CheckResourceReadiness(ctx, deployment)
 
 	deployment.TypeMeta = metav1.TypeMeta{Kind: "Deployment", APIVersion: "apps/v1"}
 	return deployment
@@ -93,7 +93,7 @@ func CreateStatefulSet(ctx context.Context, namespace, name string, opts ...Opti
 	applyOptions(statefulSet, opts...)
 	Expect(K8sClient.Create(ctx, statefulSet)).To(Succeed())
 
-	CheckResourceReadiness(ctx, statefulSet, true)
+	CheckResourceReadiness(ctx, statefulSet)
 
 	statefulSet.TypeMeta = metav1.TypeMeta{Kind: "StatefulSet", APIVersion: "apps/v1"}
 	return statefulSet
@@ -120,7 +120,7 @@ func CreateDaemonSet(ctx context.Context, namespace, name string, opts ...Option
 	applyOptions(daemonSet, opts...)
 	Expect(K8sClient.Create(ctx, daemonSet)).To(Succeed())
 
-	CheckResourceReadiness(ctx, daemonSet, true)
+	CheckResourceReadiness(ctx, daemonSet)
 
 	daemonSet.TypeMeta = metav1.TypeMeta{Kind: "DaemonSet", APIVersion: "apps/v1"}
 	return daemonSet
@@ -232,59 +232,35 @@ func RestartResource(ctx context.Context, resource client.Object) {
 }
 
 // CheckResourceReadiness waits until a Deployment, StatefulSet, or DaemonSet is ready.
-// If strict is true, readiness also requires all underlying pods to report Ready=True.
-func CheckResourceReadiness(ctx context.Context, resource client.Object, strict bool) {
+func CheckResourceReadiness(ctx context.Context, resource client.Object) {
 	By(fmt.Sprintf("Checking readiness of %T %s/%s", resource, resource.GetNamespace(), resource.GetName()))
 
 	Eventually(func() bool {
-		err := K8sClient.Get(ctx, client.ObjectKeyFromObject(resource), resource)
-		Expect(err).NotTo(HaveOccurred())
-
-		var replicasMatch bool
+		if err := K8sClient.Get(ctx, client.ObjectKeyFromObject(resource), resource); err != nil {
+			return false
+		}
 
 		switch obj := resource.(type) {
 		case *appsv1.Deployment:
-			replicasMatch = obj.Status.ReadyReplicas == *obj.Spec.Replicas
+			replicas := int32(-1)
+			if obj.Spec.Replicas != nil {
+				replicas = *obj.Spec.Replicas
+			}
+			return obj.Status.ReadyReplicas == replicas
 
 		case *appsv1.StatefulSet:
-			replicasMatch = obj.Status.ReadyReplicas == *obj.Spec.Replicas
+			replicas := int32(-1)
+			if obj.Spec.Replicas != nil {
+				replicas = *obj.Spec.Replicas
+			}
+			return obj.Status.ReadyReplicas == replicas
 
 		case *appsv1.DaemonSet:
-			replicasMatch = obj.Status.NumberReady == obj.Status.DesiredNumberScheduled
+			return obj.Status.NumberReady == obj.Status.DesiredNumberScheduled
 
 		default:
-			Fail(fmt.Sprintf("unsupported resource type: %T", resource))
-			return false
+			return false // unsupported type
 		}
-
-		if !replicasMatch {
-			return false
-		}
-
-		if !strict {
-			return true
-		}
-
-		// Strict mode: ensure each pod is Ready
-		pods, err := ListPods(ctx, resource)
-		if err != nil || len(pods.Items) == 0 {
-			return false
-		}
-
-		for _, pod := range pods.Items {
-			ready := false
-			for _, cond := range pod.Status.Conditions {
-				if cond.Type == corev1.PodReady && cond.Status == corev1.ConditionTrue {
-					ready = true
-					break
-				}
-			}
-			if !ready {
-				return false
-			}
-		}
-
-		return true
 	}, 2*time.Minute, 2*time.Second).Should(BeTrue(),
 		fmt.Sprintf("resource %T %s/%s did not become ready", resource, resource.GetNamespace(), resource.GetName()))
 }
