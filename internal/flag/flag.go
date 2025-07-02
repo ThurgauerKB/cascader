@@ -18,10 +18,10 @@ package flag
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net"
+	"strings"
 	"time"
 
 	flag "github.com/spf13/pflag"
@@ -33,6 +33,7 @@ const (
 	statefulSetAnnotation         string = "cascader.tkb.ch/statefulset"
 	lastObservedRestartAnnotation string = "cascader.tkb.ch/last-observed-restart"
 	requeueAfterAnnotation        string = "cascader.tkb.ch/requeue-after"
+	envPrefix                     string = "CASCADER"
 )
 
 // HelpRequested represents a special error type to indicate that help was requested.
@@ -63,7 +64,7 @@ type Options struct {
 	LogDev                        bool          // Enable development logging mode
 }
 
-// Validate validates the configuration.
+// Validate checks for invalid or unreachable options like malformed TCP addresses.
 func (o Options) Validate() error {
 	if _, err := net.ResolveTCPAddr("tcp", o.MetricsAddr); err != nil {
 		return fmt.Errorf("invalid metrics listen address: %w", err)
@@ -74,82 +75,89 @@ func (o Options) Validate() error {
 	return nil
 }
 
-// ParseArgs parses CLI arguments into a Options struct.
+// registerFlags binds all application flags to the given FlagSet.
+func registerFlags(fs *flag.FlagSet) {
+	fs.String("deployment-annotation", deploymentAnnotation, "Annotation key for monitored Deployments")
+	fs.String("statefulset-annotation", statefulSetAnnotation, "Annotation key for monitored StatefulSets")
+	fs.String("daemonset-annotation", daemonSetAnnotation, "Annotation key for monitored DaemonSets")
+	fs.String("last-observed-restart-annotation", lastObservedRestartAnnotation, "Annotation key for last observed restart")
+	fs.String("requeue-after-annotation", requeueAfterAnnotation, "Annotation key for requeue interval override")
+	fs.Duration("requeue-after-default", 5*time.Second, "Default requeue interval")
+
+	fs.StringSlice("watch-namespace", nil, "Namespaces to watch (can be repeated or comma-separated)")
+
+	fs.Bool("metrics-enabled", true, "Enable or disable the metrics endpoint")
+	fs.String("metrics-bind-address", ":8443", "Metrics server address")
+	fs.Bool("metrics-secure", true, "Serve metrics over HTTPS")
+	fs.String("health-probe-bind-address", ":8081", "Health and readiness probe address")
+	fs.Bool("enable-http2", false, "Enable HTTP/2 for servers")
+	fs.Bool("leader-elect", true, "Enable leader election")
+
+	fs.String("log-encoder", "json", "Log format (json, console)")
+	fs.String("log-stacktrace-level", "panic", "Stacktrace log level (info, error, panic)")
+	fs.Bool("log-devel", false, "Enable development mode logging")
+}
+
+// ParseArgs parses CLI flags into Options and handles --help/--version output.
 func ParseArgs(args []string, w io.Writer, version string) (Options, error) {
-	var opts Options
 	fs := flag.NewFlagSet("Cascader", flag.ContinueOnError)
-	fs.SortFlags = false // Preserve order in help output.
+	fs.SortFlags = false
 	fs.SetOutput(w)
 
-	// Define flags
-	fs.StringVar(&opts.DeploymentAnnotation, "deployment-annotation", deploymentAnnotation, "Annotation key for monitored Deployments")
-	fs.StringVar(&opts.StatefulSetAnnotation, "statefulset-annotation", statefulSetAnnotation, "Annotation key for monitored StatefulSets")
-	fs.StringVar(&opts.DaemonSetAnnotation, "daemonset-annotation", daemonSetAnnotation, "Annotation key for monitored DaemonSets")
-	fs.StringVar(&opts.LastObservedRestartAnnotation, "last-observed-restart-annotation", lastObservedRestartAnnotation, "Annotation key for last observed restart")
-	fs.StringVar(&opts.RequeueAfterAnnotation, "requeue-after-annotation", requeueAfterAnnotation, "Annotation key for requeue interval override")
-	fs.DurationVar(&opts.RequeueAfterDefault, "requeue-after-default", 5*time.Second, "Default requeue interval")
-
-	fs.StringSliceVar(&opts.WatchNamespaces, "watch-namespace", nil, "Namespaces to watch (can be repeated or comma-separated). Watches all if unset.")
-
-	fs.BoolVar(&opts.EnableMetrics, "metrics-enabled", true, "Enable or disable the metrics endpoint")
-	fs.StringVar(&opts.MetricsAddr, "metrics-bind-address", ":8443", "Metrics server address (e.g., :8080 for HTTP, :8443 for HTTPS)")
-	fs.BoolVar(&opts.SecureMetrics, "metrics-secure", true, "Serve metrics over HTTPS")
-
-	fs.BoolVar(&opts.EnableHTTP2, "enable-http2", false, "Enable HTTP/2 for servers")
-
-	fs.StringVar(&opts.ProbeAddr, "health-probe-bind-address", ":8081", "Health and readiness probe address")
-
-	fs.BoolVar(&opts.LeaderElection, "leader-elect", true, "Enable leader election")
-
-	fs.StringVar(&opts.LogEncoder, "log-encoder", "json", "Log format (json, console)")
-	fs.StringVar(&opts.LogStacktraceLevel, "log-stacktrace-level", "panic", "Stacktrace log level (info, error, panic)")
-	fs.BoolVar(&opts.LogDev, "log-devel", false, "Enable development mode logging")
+	registerFlags(fs)
 
 	var showVersion, showHelp bool
 	fs.BoolVar(&showVersion, "version", false, "Show version and exit")
 	fs.BoolVarP(&showHelp, "help", "h", false, "Show help and exit")
 
-	// Custom usage message
 	fs.Usage = func() {
-		fs.Output().Write([]byte("Usage:\n")) // nolint:errcheck
+		fmt.Fprintf(fs.Output(), "Usage: %s [flags]\n\nFlags:\n", strings.ToLower(fs.Name())) // nolint:errcheck
+		decorateUsageWithEnv(fs, envPrefix)
 		fs.PrintDefaults()
 	}
 
-	// Parse flags
 	if err := fs.Parse(args); err != nil {
-		return Options{}, fmt.Errorf("failed to parse arguments: %w", err)
+		return Options{}, err
 	}
 
-	// Validate configuration
-	if err := opts.Validate(); err != nil {
-		return Options{}, fmt.Errorf("invalid configuration: %w", err)
-	}
-
-	// Handle --help and --version
 	if showHelp {
-		return Options{}, &HelpRequested{Message: captureUsage(fs)}
+		var buf bytes.Buffer
+		fs.SetOutput(&buf)
+		fs.Usage()
+		return Options{}, &HelpRequested{Message: buf.String()}
 	}
 	if showVersion {
 		return Options{}, &HelpRequested{Message: fmt.Sprintf("%s version %s", fs.Name(), version)}
 	}
 
-	return opts, nil
+	return buildOptions(fs)
 }
 
-// captureUsage captures help output into a string.
-func captureUsage(fs *flag.FlagSet) string {
-	var buf bytes.Buffer
-	fs.SetOutput(&buf)
-	fs.Usage()
-	return buf.String()
-}
+// buildOptions resolves all values from flags, env, or defaults.
+func buildOptions(fs *flag.FlagSet) (opts Options, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("failed to parse flags: %v", r)
+			opts = Options{}
+		}
+	}()
 
-// IsHelpRequested checks if the error is a HelpRequested sentinel and prints it.
-func IsHelpRequested(err error, w io.Writer) bool {
-	var helpErr *HelpRequested
-	if errors.As(err, &helpErr) {
-		fmt.Fprint(w, helpErr.Error()) // nolint:errcheck
-		return true
-	}
-	return false
+	return Options{
+		WatchNamespaces:               must(fs.GetStringSlice("watch-namespace")),
+		MetricsAddr:                   must(fs.GetString("metrics-bind-address")),
+		SecureMetrics:                 must(fs.GetBool("metrics-secure")),
+		EnableMetrics:                 must(fs.GetBool("metrics-enabled")),
+		LeaderElection:                must(fs.GetBool("leader-elect")),
+		ProbeAddr:                     must(fs.GetString("health-probe-bind-address")),
+		EnableHTTP2:                   must(fs.GetBool("enable-http2")),
+		LogEncoder:                    must(fs.GetString("log-encoder")),
+		LogStacktraceLevel:            must(fs.GetString("log-stacktrace-level")),
+		LogDev:                        must(fs.GetBool("log-devel")),
+		DeploymentAnnotation:          must(fs.GetString("deployment-annotation")),
+		StatefulSetAnnotation:         must(fs.GetString("statefulset-annotation")),
+		DaemonSetAnnotation:           must(fs.GetString("daemonset-annotation")),
+		LastObservedRestartAnnotation: must(fs.GetString("last-observed-restart-annotation")),
+		RequeueAfterAnnotation:        must(fs.GetString("requeue-after-annotation")),
+		RequeueAfterDefault:           must(fs.GetDuration("requeue-after-default")),
+	}, nil
 }

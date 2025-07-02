@@ -17,16 +17,12 @@ limitations under the License.
 package flag
 
 import (
-	"bytes"
-	"errors"
 	"io"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
-	flag "github.com/spf13/pflag"
 )
 
 func TestHelpRequested(t *testing.T) {
@@ -126,7 +122,7 @@ func TestParseArgs(t *testing.T) {
 		_, err := ParseArgs(args, &output, "0.0.0")
 
 		assert.Error(t, err)
-		assert.EqualError(t, err, "failed to parse arguments: unknown flag: --invalid-flag")
+		assert.EqualError(t, err, "unknown flag: --invalid-flag")
 	})
 
 	t.Run("Test Usage", func(t *testing.T) {
@@ -233,67 +229,25 @@ func TestParseArgs(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--metrics-bind-address", ":invalid"}
-		_, err := ParseArgs(args, io.Discard, "0.0.0")
+		flags, err := ParseArgs(args, io.Discard, "0.0.0")
+		assert.NoError(t, err)
+
+		err = flags.Validate()
 
 		assert.Error(t, err)
-		assert.EqualError(t, err, "invalid configuration: invalid metrics listen address: lookup tcp/invalid: unknown port")
+		assert.EqualError(t, err, "invalid metrics listen address: lookup tcp/invalid: unknown port")
 	})
 
 	t.Run("Invalid probes listen address (invalid)", func(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--health-probe-bind-address", ":invalid"}
-		_, err := ParseArgs(args, io.Discard, "0.0.0")
+		flags, err := ParseArgs(args, io.Discard, "0.0.0")
+		assert.NoError(t, err)
 
+		err = flags.Validate()
 		assert.Error(t, err)
-		assert.EqualError(t, err, "invalid configuration: invalid probe listen address: lookup tcp/invalid: unknown port")
-	})
-}
-
-func TestCaptureUsage(t *testing.T) {
-	t.Parallel()
-
-	t.Run("Captures flag usage output", func(t *testing.T) {
-		t.Parallel()
-
-		fs := flag.NewFlagSet("test", flag.ContinueOnError)
-		fs.String("example-flag", "default", "Example flag description")
-		fs.Usage = func() { fs.PrintDefaults() }
-
-		output := captureUsage(fs)
-
-		assert.Contains(t, output, "example-flag", "Expected flag name in usage output")
-		assert.Contains(t, output, "Example flag description", "Expected flag description in usage output")
-	})
-
-	t.Run("Handles empty flag set", func(t *testing.T) {
-		t.Parallel()
-
-		fs := flag.NewFlagSet("empty", flag.ContinueOnError)
-		fs.Usage = func() {
-			_, _ = fs.Output().Write([]byte("Usage:\n"))
-			fs.PrintDefaults()
-		}
-
-		output := captureUsage(fs)
-
-		assert.NotEmpty(t, output, "Expected non-empty usage output for an empty flag set")
-	})
-
-	t.Run("Multiple flags are captured", func(t *testing.T) {
-		t.Parallel()
-
-		fs := flag.NewFlagSet("test-multi", flag.ContinueOnError)
-		fs.String("flag-one", "val1", "First flag")
-		fs.Int("flag-two", 42, "Second flag")
-		fs.Usage = func() { fs.PrintDefaults() }
-
-		output := captureUsage(fs)
-
-		assert.Contains(t, output, "flag-one", "Expected 'flag-one' in usage output")
-		assert.Contains(t, output, "First flag", "Expected 'First flag' description")
-		assert.Contains(t, output, "flag-two", "Expected 'flag-two' in usage output")
-		assert.Contains(t, output, "Second flag", "Expected 'Second flag' description")
+		assert.EqualError(t, err, "invalid probe listen address: lookup tcp/invalid: unknown port")
 	})
 }
 
@@ -335,34 +289,5 @@ func TestConfigValidate(t *testing.T) {
 		err := opts.Validate()
 		assert.Error(t, err)
 		assert.EqualError(t, err, "invalid probe listen address: lookup tcp/invalid: unknown port")
-	})
-}
-
-func TestIsHelpRequested(t *testing.T) {
-	t.Parallel()
-
-	t.Run("returns true and writes message for HelpRequested error", func(t *testing.T) {
-		t.Parallel()
-
-		buf := &bytes.Buffer{}
-		helpMsg := "this is the help message\n"
-		err := &HelpRequested{Message: helpMsg}
-
-		ok := IsHelpRequested(err, buf)
-
-		assert.True(t, ok)
-		assert.Equal(t, helpMsg, buf.String())
-	})
-
-	t.Run("returns false and writes nothing for unrelated error", func(t *testing.T) {
-		t.Parallel()
-
-		buf := &bytes.Buffer{}
-		err := errors.New("some other error")
-
-		ok := IsHelpRequested(err, buf)
-
-		assert.False(t, ok)
-		assert.Equal(t, "", buf.String())
 	})
 }

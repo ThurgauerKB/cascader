@@ -70,7 +70,7 @@ func TestRun(t *testing.T) {
 		err := Run(ctx, "v0.0.0", args, out)
 
 		assert.Error(t, err)
-		assert.EqualError(t, err, "error parsing arguments: failed to parse arguments: unknown flag: --invalid-flag")
+		assert.EqualError(t, err, "error parsing arguments: unknown flag: --invalid-flag")
 	})
 
 	t.Run("Request Help", func(t *testing.T) {

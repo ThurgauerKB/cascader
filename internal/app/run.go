@@ -54,6 +54,9 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 		}
 		return fmt.Errorf("error parsing arguments: %w", err)
 	}
+	if err := flags.Validate(); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
 
 	// Configure logging
 	logger, err := logging.InitLogging(flags, w)
