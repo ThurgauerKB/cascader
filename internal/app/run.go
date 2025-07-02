@@ -19,12 +19,11 @@ package app
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
 
-	"github.com/thurgauerkb/cascader/internal/config"
 	"github.com/thurgauerkb/cascader/internal/controller"
+	"github.com/thurgauerkb/cascader/internal/flag"
 	"github.com/thurgauerkb/cascader/internal/kinds"
 	"github.com/thurgauerkb/cascader/internal/logging"
 	"github.com/thurgauerkb/cascader/internal/utils"
@@ -46,19 +45,21 @@ func init() {
 }
 
 // Run is the main function of the application.
-func Run(ctx context.Context, version string, args []string, out io.Writer) error {
+func Run(ctx context.Context, version string, args []string, w io.Writer) error {
 	// Parse and validate command-line arguments
-	cfg, err := config.ParseArgs(args, out, version)
+	flags, err := flag.ParseArgs(args, w, version)
 	if err != nil {
-		if errors.As(err, new(*config.HelpError)) {
-			fmt.Fprintln(out, err.Error()) // nolint:errcheck
+		if flag.IsHelpRequested(err, w) {
 			return nil
 		}
 		return fmt.Errorf("error parsing arguments: %w", err)
 	}
+	if err := flags.Validate(); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
 
 	// Configure logging
-	logger, err := logging.InitLogging(cfg, out)
+	logger, err := logging.InitLogging(flags, w)
 	if err != nil {
 		return fmt.Errorf("error setting up logger: %w", err)
 	}
@@ -68,7 +69,7 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 
 	// Configure HTTP/2 settings
 	tlsOpts := []func(*tls.Config){}
-	if !cfg.EnableHTTP2 {
+	if !flags.EnableHTTP2 {
 		setupLog.Info("disabling HTTP/2 for compatibility")
 		tlsOpts = append(tlsOpts, func(c *tls.Config) {
 			c.NextProtos = []string{"http/1.1"}
@@ -82,19 +83,19 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 
 	// Configure metrics server
 	metricsServerOptions := metricsserver.Options{BindAddress: "0"} // disable listener by default
-	if cfg.EnableMetrics {
+	if flags.EnableMetrics {
 		metricsServerOptions = metricsserver.Options{
-			BindAddress:   cfg.MetricsAddr,
-			SecureServing: cfg.SecureMetrics,
+			BindAddress:   flags.MetricsAddr,
+			SecureServing: flags.SecureMetrics,
 			TLSOpts:       tlsOpts,
 		}
-		if cfg.SecureMetrics {
+		if flags.SecureMetrics {
 			metricsServerOptions.FilterProvider = filters.WithAuthenticationAndAuthorization
 		}
 	}
 
 	// Create Cache Options
-	cacheOpts := utils.ToCacheOptions(cfg.WatchNamespaces)
+	cacheOpts := utils.ToCacheOptions(flags.WatchNamespaces)
 
 	// Create and initialize the manager
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -102,8 +103,8 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 		Metrics:                metricsServerOptions,
 		Logger:                 logger,
 		WebhookServer:          webhookServer,
-		HealthProbeBindAddress: cfg.ProbeAddr,
-		LeaderElection:         cfg.LeaderElection,
+		HealthProbeBindAddress: flags.ProbeAddr,
+		LeaderElection:         flags.LeaderElection,
 		LeaderElectionID:       "fc1fdccd.cascader.tkb.ch",
 		Cache:                  cacheOpts,
 	})
@@ -112,19 +113,19 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 	}
 
 	// Log watching namespaces
-	if len(cfg.WatchNamespaces) == 0 {
+	if len(flags.WatchNamespaces) == 0 {
 		setupLog.Info("namespace scope", "mode", "cluster-wide")
 	} else {
-		setupLog.Info("namespace scope", "mode", "namespaced", "namespaces", cfg.WatchNamespaces)
+		setupLog.Info("namespace scope", "mode", "namespaced", "namespaces", flags.WatchNamespaces)
 	}
 
 	// Validate annotation uniqueness
 	configuredAnnotations := map[string]string{
-		"DaemonSet":           cfg.DaemonSetAnnotation,
-		"Deployment":          cfg.DeploymentAnnotation,
-		"StatefulSet":         cfg.StatefulSetAnnotation,
-		"LastObservedRestart": cfg.LastObservedRestartAnnotation,
-		"RequeueAfter":        cfg.RequeueAfterAnnotation,
+		"DaemonSet":           flags.DaemonSetAnnotation,
+		"Deployment":          flags.DeploymentAnnotation,
+		"StatefulSet":         flags.StatefulSetAnnotation,
+		"LastObservedRestart": flags.LastObservedRestartAnnotation,
+		"RequeueAfter":        flags.RequeueAfterAnnotation,
 	}
 	if err := utils.UniqueAnnotations(configuredAnnotations); err != nil {
 		return fmt.Errorf("annotation values must be unique: %w", err)
@@ -135,9 +136,9 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 
 	// Define resource annotations with their kinds
 	annotationKindMap := kinds.AnnotationKindMap{
-		cfg.DaemonSetAnnotation:   kinds.DaemonSetKind,
-		cfg.DeploymentAnnotation:  kinds.DeploymentKind,
-		cfg.StatefulSetAnnotation: kinds.StatefulSetKind,
+		flags.DaemonSetAnnotation:   kinds.DaemonSetKind,
+		flags.DeploymentAnnotation:  kinds.DeploymentKind,
+		flags.StatefulSetAnnotation: kinds.StatefulSetKind,
 	}
 
 	// Setup Deployment controller
@@ -147,9 +148,9 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 			KubeClient:                    mgr.GetClient(),
 			Recorder:                      mgr.GetEventRecorderFor("deployment-controller"),
 			AnnotationKindMap:             annotationKindMap,
-			LastObservedRestartAnnotation: cfg.LastObservedRestartAnnotation,
-			RequeueAfterAnnotation:        cfg.RequeueAfterAnnotation,
-			RequeueAfterDefault:           cfg.RequeueAfterDefault,
+			LastObservedRestartAnnotation: flags.LastObservedRestartAnnotation,
+			RequeueAfterAnnotation:        flags.RequeueAfterAnnotation,
+			RequeueAfterDefault:           flags.RequeueAfterDefault,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create Deployment controller: %w", err)
@@ -162,9 +163,9 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 			KubeClient:                    mgr.GetClient(),
 			Recorder:                      mgr.GetEventRecorderFor("statefulset-controller"),
 			AnnotationKindMap:             annotationKindMap,
-			LastObservedRestartAnnotation: cfg.LastObservedRestartAnnotation,
-			RequeueAfterAnnotation:        cfg.RequeueAfterAnnotation,
-			RequeueAfterDefault:           cfg.RequeueAfterDefault,
+			LastObservedRestartAnnotation: flags.LastObservedRestartAnnotation,
+			RequeueAfterAnnotation:        flags.RequeueAfterAnnotation,
+			RequeueAfterDefault:           flags.RequeueAfterDefault,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create StatefulSet controller: %w", err)
@@ -177,9 +178,9 @@ func Run(ctx context.Context, version string, args []string, out io.Writer) erro
 			KubeClient:                    mgr.GetClient(),
 			Recorder:                      mgr.GetEventRecorderFor("daemonset-controller"),
 			AnnotationKindMap:             annotationKindMap,
-			LastObservedRestartAnnotation: cfg.LastObservedRestartAnnotation,
-			RequeueAfterAnnotation:        cfg.RequeueAfterAnnotation,
-			RequeueAfterDefault:           cfg.RequeueAfterDefault,
+			LastObservedRestartAnnotation: flags.LastObservedRestartAnnotation,
+			RequeueAfterAnnotation:        flags.RequeueAfterAnnotation,
+			RequeueAfterDefault:           flags.RequeueAfterDefault,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create DaemonSet controller: %w", err)

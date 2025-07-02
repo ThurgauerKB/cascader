@@ -26,7 +26,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 )
 
-var _ = Describe("DaemonSet Workload", Ordered, func() {
+var _ = Describe("DaemonSet Workload", Serial, Ordered, func() {
 	var ns string
 
 	BeforeAll(func() {

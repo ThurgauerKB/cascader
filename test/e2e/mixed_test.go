@@ -26,7 +26,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 )
 
-var _ = Describe("Mixed workloads and dependency chains", Ordered, func() {
+var _ = Describe("Mixed workloads and dependency chains", Serial, Ordered, func() {
 	var ns string
 
 	BeforeAll(func() {

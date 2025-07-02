@@ -236,19 +236,31 @@ func CheckResourceReadiness(ctx context.Context, resource client.Object) {
 	By(fmt.Sprintf("Checking readiness of %T %s/%s", resource, resource.GetNamespace(), resource.GetName()))
 
 	Eventually(func() bool {
-		err := K8sClient.Get(ctx, client.ObjectKeyFromObject(resource), resource)
-		Expect(err).NotTo(HaveOccurred())
+		if err := K8sClient.Get(ctx, client.ObjectKeyFromObject(resource), resource); err != nil {
+			return false
+		}
 
 		switch obj := resource.(type) {
 		case *appsv1.Deployment:
-			return obj.Status.ReadyReplicas == *obj.Spec.Replicas
+			replicas := int32(-1)
+			if obj.Spec.Replicas != nil {
+				replicas = *obj.Spec.Replicas
+			}
+			return obj.Status.ReadyReplicas == replicas
+
 		case *appsv1.StatefulSet:
-			return obj.Status.ReadyReplicas == *obj.Spec.Replicas
+			replicas := int32(-1)
+			if obj.Spec.Replicas != nil {
+				replicas = *obj.Spec.Replicas
+			}
+			return obj.Status.ReadyReplicas == replicas
+
 		case *appsv1.DaemonSet:
 			return obj.Status.NumberReady == obj.Status.DesiredNumberScheduled
+
 		default:
-			Fail(fmt.Sprintf("unsupported resource type: %T", resource))
-			return false
+			return false // unsupported type
 		}
-	}, 2*time.Minute, 2*time.Second).Should(BeTrue(), fmt.Sprintf("resource %T %s/%s did not become ready", resource, resource.GetNamespace(), resource.GetName()))
+	}, 2*time.Minute, 2*time.Second).Should(BeTrue(),
+		fmt.Sprintf("resource %T %s/%s did not become ready", resource, resource.GetNamespace(), resource.GetName()))
 }
