@@ -33,7 +33,6 @@ const (
 	statefulSetAnnotation         string = "cascader.tkb.ch/statefulset"
 	lastObservedRestartAnnotation string = "cascader.tkb.ch/last-observed-restart"
 	requeueAfterAnnotation        string = "cascader.tkb.ch/requeue-after"
-	envPrefix                     string = "CASCADER"
 )
 
 // HelpRequested represents a special error type to indicate that help was requested.
@@ -77,25 +76,69 @@ func (o Options) Validate() error {
 
 // registerFlags binds all application flags to the given FlagSet.
 func registerFlags(fs *flag.FlagSet) {
-	fs.String("deployment-annotation", deploymentAnnotation, "Annotation key for monitored Deployments")
-	fs.String("statefulset-annotation", statefulSetAnnotation, "Annotation key for monitored StatefulSets")
-	fs.String("daemonset-annotation", daemonSetAnnotation, "Annotation key for monitored DaemonSets")
-	fs.String("last-observed-restart-annotation", lastObservedRestartAnnotation, "Annotation key for last observed restart")
-	fs.String("requeue-after-annotation", requeueAfterAnnotation, "Annotation key for requeue interval override")
-	fs.Duration("requeue-after-default", 5*time.Second, "Default requeue interval")
+	fs.String("deployment-annotation",
+		deploymentAnnotation,
+		envDesc("Annotation key for monitored Deployments", "CASCADER_DEPLOYMENT_ANNOTATION"))
 
-	fs.StringSlice("watch-namespace", nil, "Namespaces to watch (can be repeated or comma-separated)")
+	fs.String("statefulset-annotation",
+		statefulSetAnnotation,
+		envDesc("Annotation key for monitored StatefulSets", "CASCADER_STATEFULSET_ANNOTATION"))
 
-	fs.Bool("metrics-enabled", true, "Enable or disable the metrics endpoint")
-	fs.String("metrics-bind-address", ":8443", "Metrics server address")
-	fs.Bool("metrics-secure", true, "Serve metrics over HTTPS")
-	fs.String("health-probe-bind-address", ":8081", "Health and readiness probe address")
-	fs.Bool("enable-http2", false, "Enable HTTP/2 for servers")
-	fs.Bool("leader-elect", true, "Enable leader election")
+	fs.String("daemonset-annotation",
+		daemonSetAnnotation,
+		envDesc("Annotation key for monitored DaemonSets", "CASCADER_DAEMONSET_ANNOTATION"))
 
-	fs.String("log-encoder", "json", "Log format (json, console)")
-	fs.String("log-stacktrace-level", "panic", "Stacktrace log level (info, error, panic)")
-	fs.Bool("log-devel", false, "Enable development mode logging")
+	fs.String("last-observed-restart-annotation",
+		lastObservedRestartAnnotation,
+		envDesc("Annotation key for last observed restart", "CASCADER_LAST_OBSERVED_RESTART_ANNOTATION"))
+
+	fs.String("requeue-after-annotation",
+		requeueAfterAnnotation,
+		envDesc("Annotation key for requeue interval override", "CASCADER_REQUEUE_AFTER_ANNOTATION"))
+
+	fs.Duration("requeue-after-default",
+		5*time.Second,
+		envDesc("Default requeue interval", "CASCADER_REQUEUE_AFTER_DEFAULT"))
+
+	fs.StringSlice("watch-namespace",
+		nil,
+		envDesc("Namespaces to watch (can be repeated or comma-separated)", "CASCADER_WATCH_NAMESPACE"))
+
+	fs.Bool("metrics-enabled",
+		true,
+		envDesc("Enable or disable the metrics endpoint", "CASCADER_METRICS_ENABLED"))
+
+	fs.String("metrics-bind-address",
+		":8443",
+		envDesc("Metrics server address", "CASCADER_METRICS_BIND_ADDRESS"))
+
+	fs.Bool("metrics-secure",
+		true,
+		envDesc("Serve metrics over HTTPS", "CASCADER_METRICS_SECURE"))
+
+	fs.String("health-probe-bind-address",
+		":8081",
+		envDesc("Health and readiness probe address", "CASCADER_HEALTH_PROBE_BIND_ADDRESS"))
+
+	fs.Bool("enable-http2",
+		false,
+		envDesc("Enable HTTP/2 for servers", "CASCADER_ENABLE_HTTP2"))
+
+	fs.Bool("leader-elect",
+		true,
+		envDesc("Enable leader election", "CASCADER_LEADER_ELECT"))
+
+	fs.String("log-encoder",
+		"json",
+		envDesc("Log format (json, console)", "CASCADER_LOG_ENCODER"))
+
+	fs.String("log-stacktrace-level",
+		"panic",
+		envDesc("Stacktrace log level (info, error, panic)", "CASCADER_LOG_STACKTRACE_LEVEL"))
+
+	fs.Bool("log-devel",
+		false,
+		envDesc("Enable development mode logging", "CASCADER_LOG_DEVEL"))
 }
 
 // ParseArgs parses CLI flags into Options and handles --help/--version output.
@@ -112,7 +155,6 @@ func ParseArgs(args []string, w io.Writer, version string) (Options, error) {
 
 	fs.Usage = func() {
 		fmt.Fprintf(fs.Output(), "Usage: %s [flags]\n\nFlags:\n", strings.ToLower(fs.Name())) // nolint:errcheck
-		decorateUsageWithEnv(fs, envPrefix)
 		fs.PrintDefaults()
 	}
 
