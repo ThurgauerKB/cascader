@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/thurgauerkb/cascader/internal/config"
+	"github.com/thurgauerkb/cascader/internal/flag"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
@@ -35,14 +35,14 @@ func TestInitLogging(t *testing.T) {
 	t.Run("Valid Configuration JSON", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := config.Config{
+		opts := flag.Options{
 			LogEncoder:         "json",
 			LogStacktraceLevel: "info",
 			LogDev:             false,
 		}
 		var buf bytes.Buffer
 
-		logger, err := InitLogging(cfg, &buf)
+		logger, err := InitLogging(opts, &buf)
 		assert.NoError(t, err)
 		assert.NotEqual(t, logr.Logger{}, logger)
 	})
@@ -50,14 +50,14 @@ func TestInitLogging(t *testing.T) {
 	t.Run("Valid Configuration Console", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := config.Config{
+		opts := flag.Options{
 			LogEncoder:         "console",
 			LogStacktraceLevel: "error",
 			LogDev:             true,
 		}
 		var buf bytes.Buffer
 
-		logger, err := InitLogging(cfg, &buf)
+		logger, err := InitLogging(opts, &buf)
 		assert.NoError(t, err)
 		assert.NotEqual(t, logr.Logger{}, logger)
 	})
@@ -65,14 +65,14 @@ func TestInitLogging(t *testing.T) {
 	t.Run("Invalid Log Encoder", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := config.Config{
+		opts := flag.Options{
 			LogEncoder:         "invalid-encoder",
 			LogStacktraceLevel: "info",
 			LogDev:             false,
 		}
 		var buf bytes.Buffer
 
-		logger, err := InitLogging(cfg, &buf)
+		logger, err := InitLogging(opts, &buf)
 		assert.Error(t, err)
 		assert.EqualError(t, err, `invalid log encoder: "invalid-encoder"`)
 		assert.Equal(t, logr.Logger{}, logger)
@@ -81,14 +81,14 @@ func TestInitLogging(t *testing.T) {
 	t.Run("Invalid Stacktrace Level", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := config.Config{
+		opts := flag.Options{
 			LogEncoder:         "json",
 			LogStacktraceLevel: "invalid-level",
 			LogDev:             false,
 		}
 		var buf bytes.Buffer
 
-		logger, err := InitLogging(cfg, &buf)
+		logger, err := InitLogging(opts, &buf)
 		assert.Error(t, err)
 		assert.EqualError(t, err, `invalid stacktrace level: "invalid-level"`)
 		assert.Equal(t, logr.Logger{}, logger)
@@ -100,27 +100,27 @@ func TestSetupLogger(t *testing.T) {
 
 	t.Run("Setup Logger", func(t *testing.T) {
 		t.Parallel()
-		cfg := config.Config{
+		opts := flag.Options{
 			LogDev:             true,
 			LogEncoder:         "json",
 			LogStacktraceLevel: "error",
 		}
 
 		var buf bytes.Buffer
-		_, err := setupLogger(cfg, &buf)
+		_, err := setupLogger(opts, &buf)
 		assert.NoError(t, err)
 	})
 
 	t.Run("Error Setup Logger - invalid encoder", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := config.Config{
+		opts := flag.Options{
 			LogDev:             false,
 			LogEncoder:         "invalid",
 			LogStacktraceLevel: "panic",
 		}
 		var buf bytes.Buffer
-		_, err := setupLogger(cfg, &buf)
+		_, err := setupLogger(opts, &buf)
 		assert.Error(t, err)
 		assert.EqualError(t, err, "invalid log encoder: \"invalid\"")
 	})
@@ -128,13 +128,13 @@ func TestSetupLogger(t *testing.T) {
 	t.Run("Error Setup Logger - invalid stacktrace level", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := config.Config{
+		opts := flag.Options{
 			LogDev:             true,
 			LogEncoder:         "console",
 			LogStacktraceLevel: "invalid",
 		}
 		var buf bytes.Buffer
-		_, err := setupLogger(cfg, &buf)
+		_, err := setupLogger(opts, &buf)
 		assert.Error(t, err)
 		assert.EqualError(t, err, "invalid stacktrace level: \"invalid\"")
 	})

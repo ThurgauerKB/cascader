@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package config
+package flag
 
 import (
 	"bytes"
@@ -55,24 +55,24 @@ func TestParseArgs(t *testing.T) {
 
 		args := []string{}
 		var output strings.Builder
-		cfg, err := ParseArgs(args, &output, "0.0.0")
+		opts, err := ParseArgs(args, &output, "0.0.0")
 
 		assert.NoError(t, err)
-		assert.Equal(t, "cascader.tkb.ch/deployment", cfg.DeploymentAnnotation)
-		assert.Equal(t, "cascader.tkb.ch/statefulset", cfg.StatefulSetAnnotation)
-		assert.Equal(t, "cascader.tkb.ch/daemonset", cfg.DaemonSetAnnotation)
-		assert.Equal(t, "cascader.tkb.ch/requeue-after", cfg.RequeueAfterAnnotation)
-		assert.Equal(t, "cascader.tkb.ch/last-observed-restart", cfg.LastObservedRestartAnnotation)
-		assert.Equal(t, 5*time.Second, cfg.RequeueAfterDefault)
-		assert.Equal(t, ":8443", cfg.MetricsAddr)
-		assert.Equal(t, ":8081", cfg.ProbeAddr)
-		assert.True(t, cfg.LeaderElection)
-		assert.True(t, cfg.EnableMetrics)
-		assert.True(t, cfg.SecureMetrics)
-		assert.False(t, cfg.EnableHTTP2)
-		assert.Equal(t, "json", cfg.LogEncoder)
-		assert.Equal(t, "panic", cfg.LogStacktraceLevel)
-		assert.False(t, cfg.LogDev)
+		assert.Equal(t, "cascader.tkb.ch/deployment", opts.DeploymentAnnotation)
+		assert.Equal(t, "cascader.tkb.ch/statefulset", opts.StatefulSetAnnotation)
+		assert.Equal(t, "cascader.tkb.ch/daemonset", opts.DaemonSetAnnotation)
+		assert.Equal(t, "cascader.tkb.ch/requeue-after", opts.RequeueAfterAnnotation)
+		assert.Equal(t, "cascader.tkb.ch/last-observed-restart", opts.LastObservedRestartAnnotation)
+		assert.Equal(t, 5*time.Second, opts.RequeueAfterDefault)
+		assert.Equal(t, ":8443", opts.MetricsAddr)
+		assert.Equal(t, ":8081", opts.ProbeAddr)
+		assert.True(t, opts.LeaderElection)
+		assert.True(t, opts.EnableMetrics)
+		assert.True(t, opts.SecureMetrics)
+		assert.False(t, opts.EnableHTTP2)
+		assert.Equal(t, "json", opts.LogEncoder)
+		assert.Equal(t, "panic", opts.LogStacktraceLevel)
+		assert.False(t, opts.LogDev)
 	})
 
 	t.Run("Override values", func(t *testing.T) {
@@ -98,24 +98,24 @@ func TestParseArgs(t *testing.T) {
 
 		var output strings.Builder
 
-		cfg, err := ParseArgs(args, &output, "0.0.0")
+		opts, err := ParseArgs(args, &output, "0.0.0")
 
 		assert.NoError(t, err)
-		assert.Equal(t, "custom.deployment", cfg.DeploymentAnnotation)
-		assert.Equal(t, "custom.statefulset", cfg.StatefulSetAnnotation)
-		assert.Equal(t, "custom.daemonset", cfg.DaemonSetAnnotation)
-		assert.Equal(t, "custom.last-observed-restart", cfg.LastObservedRestartAnnotation)
-		assert.Equal(t, "custom.requeue-after", cfg.RequeueAfterAnnotation)
-		assert.Equal(t, 10*time.Second, cfg.RequeueAfterDefault)
-		assert.Equal(t, ":9090", cfg.MetricsAddr)
-		assert.Equal(t, ":9091", cfg.ProbeAddr)
-		assert.True(t, cfg.LeaderElection)
-		assert.False(t, cfg.EnableMetrics)
-		assert.False(t, cfg.SecureMetrics)
-		assert.True(t, cfg.EnableHTTP2)
-		assert.Equal(t, "console", cfg.LogEncoder)
-		assert.Equal(t, "panic", cfg.LogStacktraceLevel)
-		assert.True(t, cfg.LogDev)
+		assert.Equal(t, "custom.deployment", opts.DeploymentAnnotation)
+		assert.Equal(t, "custom.statefulset", opts.StatefulSetAnnotation)
+		assert.Equal(t, "custom.daemonset", opts.DaemonSetAnnotation)
+		assert.Equal(t, "custom.last-observed-restart", opts.LastObservedRestartAnnotation)
+		assert.Equal(t, "custom.requeue-after", opts.RequeueAfterAnnotation)
+		assert.Equal(t, 10*time.Second, opts.RequeueAfterDefault)
+		assert.Equal(t, ":9090", opts.MetricsAddr)
+		assert.Equal(t, ":9091", opts.ProbeAddr)
+		assert.True(t, opts.LeaderElection)
+		assert.False(t, opts.EnableMetrics)
+		assert.False(t, opts.SecureMetrics)
+		assert.True(t, opts.EnableHTTP2)
+		assert.Equal(t, "console", opts.LogEncoder)
+		assert.Equal(t, "panic", opts.LogStacktraceLevel)
+		assert.True(t, opts.LogDev)
 	})
 
 	t.Run("Invalid flag", func(t *testing.T) {
@@ -156,77 +156,77 @@ func TestParseArgs(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--watch-namespace", "ns1", "--watch-namespace", "ns2"}
-		cfg, err := ParseArgs(args, io.Discard, "0.0.0")
+		opts, err := ParseArgs(args, io.Discard, "0.0.0")
 
 		assert.NoError(t, err)
-		assert.Len(t, cfg.WatchNamespaces, 2)
-		assert.Equal(t, "ns1", cfg.WatchNamespaces[0])
-		assert.Equal(t, "ns2", cfg.WatchNamespaces[1])
+		assert.Len(t, opts.WatchNamespaces, 2)
+		assert.Equal(t, "ns1", opts.WatchNamespaces[0])
+		assert.Equal(t, "ns2", opts.WatchNamespaces[1])
 	})
 
 	t.Run("Multiple namespaces, comma separated", func(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--watch-namespace", "ns1,ns2"}
-		cfg, err := ParseArgs(args, io.Discard, "0.0.0")
+		opts, err := ParseArgs(args, io.Discard, "0.0.0")
 
 		assert.NoError(t, err)
-		assert.Len(t, cfg.WatchNamespaces, 2)
-		assert.Equal(t, "ns1", cfg.WatchNamespaces[0])
-		assert.Equal(t, "ns2", cfg.WatchNamespaces[1])
+		assert.Len(t, opts.WatchNamespaces, 2)
+		assert.Equal(t, "ns1", opts.WatchNamespaces[0])
+		assert.Equal(t, "ns2", opts.WatchNamespaces[1])
 	})
 
 	t.Run("Multiple namespaces, mixed", func(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--watch-namespace", "ns1", "--watch-namespace", "ns2,ns3"}
-		cfg, err := ParseArgs(args, io.Discard, "0.0.0")
+		opts, err := ParseArgs(args, io.Discard, "0.0.0")
 
 		assert.NoError(t, err)
-		assert.Len(t, cfg.WatchNamespaces, 3)
-		assert.Equal(t, "ns1", cfg.WatchNamespaces[0])
-		assert.Equal(t, "ns2", cfg.WatchNamespaces[1])
-		assert.Equal(t, "ns3", cfg.WatchNamespaces[2])
+		assert.Len(t, opts.WatchNamespaces, 3)
+		assert.Equal(t, "ns1", opts.WatchNamespaces[0])
+		assert.Equal(t, "ns2", opts.WatchNamespaces[1])
+		assert.Equal(t, "ns3", opts.WatchNamespaces[2])
 	})
 
 	t.Run("Valid metrics listen address (:8080)", func(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--metrics-bind-address", ":8080"}
-		cfg, err := ParseArgs(args, io.Discard, "0.0.0")
+		opts, err := ParseArgs(args, io.Discard, "0.0.0")
 
 		assert.NoError(t, err)
-		assert.Equal(t, ":8080", cfg.MetricsAddr)
+		assert.Equal(t, ":8080", opts.MetricsAddr)
 	})
 
 	t.Run("Valid metrics listen address (127.0.0.1:8080)", func(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--metrics-bind-address", "127.0.0.1:8080"}
-		cfg, err := ParseArgs(args, io.Discard, "0.0.0")
+		opts, err := ParseArgs(args, io.Discard, "0.0.0")
 
 		assert.NoError(t, err)
-		assert.Equal(t, "127.0.0.1:8080", cfg.MetricsAddr)
+		assert.Equal(t, "127.0.0.1:8080", opts.MetricsAddr)
 	})
 
 	t.Run("Valid metrics listen address (localhost:8080)", func(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--metrics-bind-address", "localhost:8080"}
-		cfg, err := ParseArgs(args, io.Discard, "0.0.0")
+		opts, err := ParseArgs(args, io.Discard, "0.0.0")
 
 		assert.NoError(t, err)
-		assert.Equal(t, "localhost:8080", cfg.MetricsAddr)
+		assert.Equal(t, "localhost:8080", opts.MetricsAddr)
 	})
 
 	t.Run("Valid metrics listen address (:80)", func(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--metrics-bind-address", ":80"}
-		cfg, err := ParseArgs(args, io.Discard, "0.0.0")
+		opts, err := ParseArgs(args, io.Discard, "0.0.0")
 
 		assert.NoError(t, err)
-		assert.Equal(t, ":80", cfg.MetricsAddr)
+		assert.Equal(t, ":80", opts.MetricsAddr)
 	})
 
 	t.Run("Invalid metrics listen address (invalid)", func(t *testing.T) {
@@ -303,23 +303,23 @@ func TestConfigValidate(t *testing.T) {
 	t.Run("Valid listen addresses (127.0.0.1:8081)", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := Config{
+		opts := Options{
 			MetricsAddr: "localhost:9090",
 			ProbeAddr:   "127.0.0.1:8081",
 		}
 
-		assert.NoError(t, cfg.Validate())
+		assert.NoError(t, opts.Validate())
 	})
 
 	t.Run("Invalid metrics address", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := Config{
+		opts := Options{
 			MetricsAddr: ":invalid",
 			ProbeAddr:   ":8081",
 		}
 
-		err := cfg.Validate()
+		err := opts.Validate()
 		assert.Error(t, err)
 		assert.EqualError(t, err, "invalid metrics listen address: lookup tcp/invalid: unknown port")
 	})
@@ -327,12 +327,12 @@ func TestConfigValidate(t *testing.T) {
 	t.Run("Invalid probe address", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := Config{
+		opts := Options{
 			MetricsAddr: ":9090",
 			ProbeAddr:   ":invalid",
 		}
 
-		err := cfg.Validate()
+		err := opts.Validate()
 		assert.Error(t, err)
 		assert.EqualError(t, err, "invalid probe listen address: lookup tcp/invalid: unknown port")
 	})

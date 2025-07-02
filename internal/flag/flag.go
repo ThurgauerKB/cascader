@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package config
+package flag
 
 import (
 	"bytes"
@@ -43,8 +43,8 @@ type HelpRequested struct {
 // Error returns the error message.
 func (e *HelpRequested) Error() string { return e.Message }
 
-// Config holds all configuration options for the application.
-type Config struct {
+// Options holds all configuration options for the application.
+type Options struct {
 	WatchNamespaces               []string      // Namespaces to watch
 	MetricsAddr                   string        // Address for the metrics server
 	LeaderElection                bool          // Enable leader election
@@ -64,46 +64,46 @@ type Config struct {
 }
 
 // Validate validates the configuration.
-func (c Config) Validate() error {
-	if _, err := net.ResolveTCPAddr("tcp", c.MetricsAddr); err != nil {
+func (o Options) Validate() error {
+	if _, err := net.ResolveTCPAddr("tcp", o.MetricsAddr); err != nil {
 		return fmt.Errorf("invalid metrics listen address: %w", err)
 	}
-	if _, err := net.ResolveTCPAddr("tcp", c.ProbeAddr); err != nil {
+	if _, err := net.ResolveTCPAddr("tcp", o.ProbeAddr); err != nil {
 		return fmt.Errorf("invalid probe listen address: %w", err)
 	}
 	return nil
 }
 
-// ParseArgs parses CLI arguments into a Config struct.
-func ParseArgs(args []string, out io.Writer, version string) (Config, error) {
-	var cfg Config
+// ParseArgs parses CLI arguments into a Options struct.
+func ParseArgs(args []string, w io.Writer, version string) (Options, error) {
+	var opts Options
 	fs := flag.NewFlagSet("Cascader", flag.ContinueOnError)
 	fs.SortFlags = false // Preserve order in help output.
-	fs.SetOutput(out)
+	fs.SetOutput(w)
 
 	// Define flags
-	fs.StringVar(&cfg.DeploymentAnnotation, "deployment-annotation", deploymentAnnotation, "Annotation key for monitored Deployments")
-	fs.StringVar(&cfg.StatefulSetAnnotation, "statefulset-annotation", statefulSetAnnotation, "Annotation key for monitored StatefulSets")
-	fs.StringVar(&cfg.DaemonSetAnnotation, "daemonset-annotation", daemonSetAnnotation, "Annotation key for monitored DaemonSets")
-	fs.StringVar(&cfg.LastObservedRestartAnnotation, "last-observed-restart-annotation", lastObservedRestartAnnotation, "Annotation key for last observed restart")
-	fs.StringVar(&cfg.RequeueAfterAnnotation, "requeue-after-annotation", requeueAfterAnnotation, "Annotation key for requeue interval override")
-	fs.DurationVar(&cfg.RequeueAfterDefault, "requeue-after-default", 5*time.Second, "Default requeue interval")
+	fs.StringVar(&opts.DeploymentAnnotation, "deployment-annotation", deploymentAnnotation, "Annotation key for monitored Deployments")
+	fs.StringVar(&opts.StatefulSetAnnotation, "statefulset-annotation", statefulSetAnnotation, "Annotation key for monitored StatefulSets")
+	fs.StringVar(&opts.DaemonSetAnnotation, "daemonset-annotation", daemonSetAnnotation, "Annotation key for monitored DaemonSets")
+	fs.StringVar(&opts.LastObservedRestartAnnotation, "last-observed-restart-annotation", lastObservedRestartAnnotation, "Annotation key for last observed restart")
+	fs.StringVar(&opts.RequeueAfterAnnotation, "requeue-after-annotation", requeueAfterAnnotation, "Annotation key for requeue interval override")
+	fs.DurationVar(&opts.RequeueAfterDefault, "requeue-after-default", 5*time.Second, "Default requeue interval")
 
-	fs.StringSliceVar(&cfg.WatchNamespaces, "watch-namespace", nil, "Namespaces to watch (can be repeated or comma-separated). Watches all if unset.")
+	fs.StringSliceVar(&opts.WatchNamespaces, "watch-namespace", nil, "Namespaces to watch (can be repeated or comma-separated). Watches all if unset.")
 
-	fs.BoolVar(&cfg.EnableMetrics, "metrics-enabled", true, "Enable or disable the metrics endpoint")
-	fs.StringVar(&cfg.MetricsAddr, "metrics-bind-address", ":8443", "Metrics server address (e.g., :8080 for HTTP, :8443 for HTTPS)")
-	fs.BoolVar(&cfg.SecureMetrics, "metrics-secure", true, "Serve metrics over HTTPS")
+	fs.BoolVar(&opts.EnableMetrics, "metrics-enabled", true, "Enable or disable the metrics endpoint")
+	fs.StringVar(&opts.MetricsAddr, "metrics-bind-address", ":8443", "Metrics server address (e.g., :8080 for HTTP, :8443 for HTTPS)")
+	fs.BoolVar(&opts.SecureMetrics, "metrics-secure", true, "Serve metrics over HTTPS")
 
-	fs.BoolVar(&cfg.EnableHTTP2, "enable-http2", false, "Enable HTTP/2 for servers")
+	fs.BoolVar(&opts.EnableHTTP2, "enable-http2", false, "Enable HTTP/2 for servers")
 
-	fs.StringVar(&cfg.ProbeAddr, "health-probe-bind-address", ":8081", "Health and readiness probe address")
+	fs.StringVar(&opts.ProbeAddr, "health-probe-bind-address", ":8081", "Health and readiness probe address")
 
-	fs.BoolVar(&cfg.LeaderElection, "leader-elect", true, "Enable leader election")
+	fs.BoolVar(&opts.LeaderElection, "leader-elect", true, "Enable leader election")
 
-	fs.StringVar(&cfg.LogEncoder, "log-encoder", "json", "Log format (json, console)")
-	fs.StringVar(&cfg.LogStacktraceLevel, "log-stacktrace-level", "panic", "Stacktrace log level (info, error, panic)")
-	fs.BoolVar(&cfg.LogDev, "log-devel", false, "Enable development mode logging")
+	fs.StringVar(&opts.LogEncoder, "log-encoder", "json", "Log format (json, console)")
+	fs.StringVar(&opts.LogStacktraceLevel, "log-stacktrace-level", "panic", "Stacktrace log level (info, error, panic)")
+	fs.BoolVar(&opts.LogDev, "log-devel", false, "Enable development mode logging")
 
 	var showVersion, showHelp bool
 	fs.BoolVar(&showVersion, "version", false, "Show version and exit")
@@ -117,23 +117,23 @@ func ParseArgs(args []string, out io.Writer, version string) (Config, error) {
 
 	// Parse flags
 	if err := fs.Parse(args); err != nil {
-		return Config{}, fmt.Errorf("failed to parse arguments: %w", err)
+		return Options{}, fmt.Errorf("failed to parse arguments: %w", err)
 	}
 
 	// Validate configuration
-	if err := cfg.Validate(); err != nil {
-		return Config{}, fmt.Errorf("invalid configuration: %w", err)
+	if err := opts.Validate(); err != nil {
+		return Options{}, fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	// Handle --help and --version
 	if showHelp {
-		return Config{}, &HelpRequested{Message: captureUsage(fs)}
+		return Options{}, &HelpRequested{Message: captureUsage(fs)}
 	}
 	if showVersion {
-		return Config{}, &HelpRequested{Message: fmt.Sprintf("%s version %s", fs.Name(), version)}
+		return Options{}, &HelpRequested{Message: fmt.Sprintf("%s version %s", fs.Name(), version)}
 	}
 
-	return cfg, nil
+	return opts, nil
 }
 
 // captureUsage captures help output into a string.
