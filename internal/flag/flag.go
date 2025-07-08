@@ -17,14 +17,10 @@ limitations under the License.
 package flag
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"net"
-	"strings"
 	"time"
 
-	flag "github.com/spf13/pflag"
+	"github.com/containeroo/tinyflags"
 )
 
 const (
@@ -34,14 +30,6 @@ const (
 	lastObservedRestartAnnotation string = "cascader.tkb.ch/last-observed-restart"
 	requeueAfterAnnotation        string = "cascader.tkb.ch/requeue-after"
 )
-
-// HelpRequested represents a special error type to indicate that help was requested.
-type HelpRequested struct {
-	Message string
-}
-
-// Error returns the error message.
-func (e *HelpRequested) Error() string { return e.Message }
 
 // Options holds all configuration options for the application.
 type Options struct {
@@ -63,143 +51,76 @@ type Options struct {
 	LogDev                        bool          // Enable development logging mode
 }
 
-// Validate checks for invalid or unreachable options like malformed TCP addresses.
-func (o Options) Validate() error {
-	if _, err := net.ResolveTCPAddr("tcp", o.MetricsAddr); err != nil {
-		return fmt.Errorf("invalid metrics listen address: %w", err)
-	}
-	if _, err := net.ResolveTCPAddr("tcp", o.ProbeAddr); err != nil {
-		return fmt.Errorf("invalid probe listen address: %w", err)
-	}
-	return nil
-}
-
-// registerFlags binds all application flags to the given FlagSet.
-func registerFlags(fs *flag.FlagSet) {
-	fs.String("deployment-annotation",
-		deploymentAnnotation,
-		envDesc("Annotation key for monitored Deployments", "CASCADER_DEPLOYMENT_ANNOTATION"))
-
-	fs.String("statefulset-annotation",
-		statefulSetAnnotation,
-		envDesc("Annotation key for monitored StatefulSets", "CASCADER_STATEFULSET_ANNOTATION"))
-
-	fs.String("daemonset-annotation",
-		daemonSetAnnotation,
-		envDesc("Annotation key for monitored DaemonSets", "CASCADER_DAEMONSET_ANNOTATION"))
-
-	fs.String("last-observed-restart-annotation",
-		lastObservedRestartAnnotation,
-		envDesc("Annotation key for last observed restart", "CASCADER_LAST_OBSERVED_RESTART_ANNOTATION"))
-
-	fs.String("requeue-after-annotation",
-		requeueAfterAnnotation,
-		envDesc("Annotation key for requeue interval override", "CASCADER_REQUEUE_AFTER_ANNOTATION"))
-
-	fs.Duration("requeue-after-default",
-		5*time.Second,
-		envDesc("Default requeue interval", "CASCADER_REQUEUE_AFTER_DEFAULT"))
-
-	fs.StringSlice("watch-namespace",
-		nil,
-		envDesc("Namespaces to watch (can be repeated or comma-separated)", "CASCADER_WATCH_NAMESPACE"))
-
-	fs.Bool("metrics-enabled",
-		true,
-		envDesc("Enable or disable the metrics endpoint", "CASCADER_METRICS_ENABLED"))
-
-	fs.String("metrics-bind-address",
-		":8443",
-		envDesc("Metrics server address", "CASCADER_METRICS_BIND_ADDRESS"))
-
-	fs.Bool("metrics-secure",
-		true,
-		envDesc("Serve metrics over HTTPS", "CASCADER_METRICS_SECURE"))
-
-	fs.String("health-probe-bind-address",
-		":8081",
-		envDesc("Health and readiness probe address", "CASCADER_HEALTH_PROBE_BIND_ADDRESS"))
-
-	fs.Bool("enable-http2",
-		false,
-		envDesc("Enable HTTP/2 for servers", "CASCADER_ENABLE_HTTP2"))
-
-	fs.Bool("leader-elect",
-		true,
-		envDesc("Enable leader election", "CASCADER_LEADER_ELECT"))
-
-	fs.String("log-encoder",
-		"json",
-		envDesc("Log format (json, console)", "CASCADER_LOG_ENCODER"))
-
-	fs.String("log-stacktrace-level",
-		"panic",
-		envDesc("Stacktrace log level (info, error, panic)", "CASCADER_LOG_STACKTRACE_LEVEL"))
-
-	fs.Bool("log-devel",
-		false,
-		envDesc("Enable development mode logging", "CASCADER_LOG_DEVEL"))
-}
-
 // ParseArgs parses CLI flags into Options and handles --help/--version output.
-func ParseArgs(args []string, w io.Writer, version string) (Options, error) {
-	fs := flag.NewFlagSet("Cascader", flag.ContinueOnError)
-	fs.SortFlags = false
-	fs.SetOutput(w)
+func ParseArgs(args []string, version string) (Options, error) {
+	options := Options{}
 
-	registerFlags(fs)
+	tf := tinyflags.NewFlagSet("Cascader", tinyflags.ContinueOnError)
+	tf.Version(version)
+	tf.DescriptionIndent(48)
+	tf.DescriptionMaxLen(140)
 
-	var showVersion, showHelp bool
-	fs.BoolVar(&showVersion, "version", false, "Show version and exit")
-	fs.BoolVarP(&showHelp, "help", "h", false, "Show help and exit")
+	tf.StringVar(&options.DeploymentAnnotation, "deployment-annotation", deploymentAnnotation, "Annotation key for monitored Deployments").
+		Metavar("ANN").
+		Value()
+	tf.StringVar(&options.StatefulSetAnnotation, "statefulset-annotation", statefulSetAnnotation, "Annotation key for monitored StatefulSets").
+		Metavar("ANN").
+		Value()
+	tf.StringVar(&options.DaemonSetAnnotation, "daemonset-annotation", daemonSetAnnotation, "Annotation key for monitored DaemonSets").
+		Metavar("ANN").
+		Value()
+	tf.StringVar(&options.LastObservedRestartAnnotation, "last-observed-restart-annotation", lastObservedRestartAnnotation, "Annotation key for last observed restart").
+		Metavar("ANN").
+		Value()
+	tf.StringVar(&options.RequeueAfterAnnotation, "requeue-after-annotation", requeueAfterAnnotation, "Annotation key for requeue interval override").
+		Metavar("ANN").
+		Value()
 
-	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "Usage: %s [flags]\n\nFlags:\n", strings.ToLower(fs.Name())) // nolint:errcheck
-		fs.PrintDefaults()
-	}
+	tf.DurationVar(&options.RequeueAfterDefault, "requeue-after-default", 5*time.Second, "Default requeue interval (Minimum 2 Seconds)").
+		Validator(func(d time.Duration) error {
+			if d < 2*time.Second {
+				return fmt.Errorf("requeue-after-default must be at least 2 seconds")
+			}
+			return nil
+		}).
+		Metavar("DUR").
+		Value()
 
-	if err := fs.Parse(args); err != nil {
+	tf.StringSliceVar(&options.WatchNamespaces, "watch-namespace", nil, "Namespaces to watch (can be repeated or comma-separated)").
+		Metavar("NS").
+		Value()
+
+	tf.BoolVar(&options.EnableMetrics, "metrics-enabled", true, "Enable or disable the metrics endpoint").
+		Strict().
+		Value()
+	tf.ListenAddrVar(&options.MetricsAddr, "metrics-bind-address", ":8443", "Metrics server address").
+		Metavar("ADDR").
+		Value()
+	tf.BoolVar(&options.SecureMetrics, "metrics-secure", true, "Serve metrics over HTTPS").
+		Strict().
+		Value()
+
+	tf.ListenAddrVar(&options.ProbeAddr, "health-probe-bind-address", ":8081", "Health and readiness probe address").
+		Metavar("ADDR").
+		Value()
+	tf.BoolVar(&options.EnableHTTP2, "enable-http2", false, "Enable HTTP/2 for servers").
+		Value()
+	tf.BoolVar(&options.LeaderElection, "leader-elect", true, "Enable leader election").
+		Strict().
+		Value()
+
+	tf.StringVar(&options.LogEncoder, "log-encoder", "json", "Log format (json, console)").
+		Choices("json", "console").
+		Value()
+
+	tf.BoolVar(&options.LogDev, "log-devel", false, "Enable development mode logging").Value()
+	tf.StringVar(&options.LogStacktraceLevel, "log-stacktrace-level", "panic", "Stacktrace log level").
+		Choices("info", "error", "panic").
+		Value()
+
+	if err := tf.Parse(args); err != nil {
 		return Options{}, err
 	}
 
-	if showHelp {
-		var buf bytes.Buffer
-		fs.SetOutput(&buf)
-		fs.Usage()
-		return Options{}, &HelpRequested{Message: buf.String()}
-	}
-	if showVersion {
-		return Options{}, &HelpRequested{Message: fmt.Sprintf("%s version %s", fs.Name(), version)}
-	}
-
-	return buildOptions(fs)
-}
-
-// buildOptions resolves all values from flags, env, or defaults.
-func buildOptions(fs *flag.FlagSet) (opts Options, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("failed to parse flags: %v", r)
-			opts = Options{}
-		}
-	}()
-
-	return Options{
-		WatchNamespaces:               must(fs.GetStringSlice("watch-namespace")),
-		MetricsAddr:                   must(fs.GetString("metrics-bind-address")),
-		SecureMetrics:                 must(fs.GetBool("metrics-secure")),
-		EnableMetrics:                 must(fs.GetBool("metrics-enabled")),
-		LeaderElection:                must(fs.GetBool("leader-elect")),
-		ProbeAddr:                     must(fs.GetString("health-probe-bind-address")),
-		EnableHTTP2:                   must(fs.GetBool("enable-http2")),
-		LogEncoder:                    must(fs.GetString("log-encoder")),
-		LogStacktraceLevel:            must(fs.GetString("log-stacktrace-level")),
-		LogDev:                        must(fs.GetBool("log-devel")),
-		DeploymentAnnotation:          must(fs.GetString("deployment-annotation")),
-		StatefulSetAnnotation:         must(fs.GetString("statefulset-annotation")),
-		DaemonSetAnnotation:           must(fs.GetString("daemonset-annotation")),
-		LastObservedRestartAnnotation: must(fs.GetString("last-observed-restart-annotation")),
-		RequeueAfterAnnotation:        must(fs.GetString("requeue-after-annotation")),
-		RequeueAfterDefault:           must(fs.GetDuration("requeue-after-default")),
-	}, nil
+	return options, nil
 }

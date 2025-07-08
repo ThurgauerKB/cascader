@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/containeroo/tinyflags"
 	"github.com/thurgauerkb/cascader/internal/controller"
 	"github.com/thurgauerkb/cascader/internal/flag"
 	"github.com/thurgauerkb/cascader/internal/kinds"
@@ -47,15 +48,14 @@ func init() {
 // Run is the main function of the application.
 func Run(ctx context.Context, version string, args []string, w io.Writer) error {
 	// Parse and validate command-line arguments
-	flags, err := flag.ParseArgs(args, w, version)
+	flags, err := flag.ParseArgs(args, version)
 	if err != nil {
-		if flag.IsHelpRequested(err, w) {
+		if tinyflags.IsHelpRequested(err) || tinyflags.IsVersionRequested(err) {
+			fmt.Fprint(w, err.Error()) // nolint:errcheck
 			return nil
 		}
+
 		return fmt.Errorf("error parsing arguments: %w", err)
-	}
-	if err := flags.Validate(); err != nil {
-		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	// Configure logging

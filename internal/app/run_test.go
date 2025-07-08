@@ -83,7 +83,7 @@ func TestRun(t *testing.T) {
 		err := Run(ctx, "v0.0.0", args, out)
 
 		assert.NoError(t, err)
-		assert.Equal(t, "Cascader version v0.0.0", out.String())
+		assert.Equal(t, "v0.0.0", out.String())
 	})
 
 	t.Run("Logger error", func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestRun(t *testing.T) {
 		err := Run(ctx, "v0.0.0", args, out)
 
 		assert.Error(t, err)
-		assert.EqualError(t, err, "error setting up logger: invalid log encoder: \"invalid\"")
+		assert.EqualError(t, err, "error parsing arguments: invalid value for flag --log-encoder: invalid value \"invalid\": must be one of json, console")
 	})
 
 	t.Run("Leader Election", func(t *testing.T) {

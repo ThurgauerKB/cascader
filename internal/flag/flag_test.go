@@ -17,29 +17,53 @@ limitations under the License.
 package flag
 
 import (
-	"io"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/containeroo/tinyflags"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHelpRequested(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Error Message", func(t *testing.T) {
+	t.Run("show version", func(t *testing.T) {
 		t.Parallel()
 
-		err := &HelpRequested{Message: "This is a help message"}
-		assert.EqualError(t, err, "This is a help message")
+		_, err := ParseArgs([]string{"--version"}, "1.2.3")
+		assert.Error(t, err)
+		assert.True(t, tinyflags.IsVersionRequested(err))
+		assert.EqualError(t, err, "1.2.3")
 	})
 
-	t.Run("As HelpRequested", func(t *testing.T) {
+	t.Run("show help", func(t *testing.T) {
 		t.Parallel()
 
-		err := &HelpRequested{Message: "Help requested"}
-		assert.IsType(t, &HelpRequested{}, err, "As() should return true for HelpRequested type")
+		_, err := ParseArgs([]string{"--help"}, "")
+		assert.Error(t, err)
+		assert.True(t, tinyflags.IsHelpRequested(err))
+		usage := `Usage: Cascader [flags]
+Flags:
+      --deployment-annotation ANN                Annotation key for monitored Deployments (Default: cascader.tkb.ch/deployment)
+      --statefulset-annotation ANN               Annotation key for monitored StatefulSets (Default: cascader.tkb.ch/statefulset)
+      --daemonset-annotation ANN                 Annotation key for monitored DaemonSets (Default: cascader.tkb.ch/daemonset)
+      --last-observed-restart-annotation ANN     Annotation key for last observed restart (Default: cascader.tkb.ch/last-observed-restart)
+      --requeue-after-annotation ANN             Annotation key for requeue interval override (Default: cascader.tkb.ch/requeue-after)
+      --requeue-after-default DUR                Default requeue interval (Minimum 2 Seconds) (Default: 5s)
+      --watch-namespace NS...                    Namespaces to watch (can be repeated or comma-separated)
+      --metrics-enabled <true|false>             Enable or disable the metrics endpoint (Default: true)
+      --metrics-bind-address ADDR                Metrics server address (Default: :8443)
+      --metrics-secure <true|false>              Serve metrics over HTTPS (Default: true)
+      --health-probe-bind-address ADDR           Health and readiness probe address (Default: :8081)
+      --enable-http2                             Enable HTTP/2 for servers
+      --leader-elect <true|false>                Enable leader election (Default: true)
+      --log-encoder <json|console>               Log format (json, console) (Allowed: json, console) (Default: json)
+      --log-devel                                Enable development mode logging
+      --log-stacktrace-level <info|error|panic>  Stacktrace log level (Allowed: info, error, panic) (Default: panic)
+  -h, --help                                     show help
+`
+		assert.EqualError(t, err, usage)
 	})
 }
 
@@ -50,8 +74,7 @@ func TestParseArgs(t *testing.T) {
 		t.Parallel()
 
 		args := []string{}
-		var output strings.Builder
-		opts, err := ParseArgs(args, &output, "0.0.0")
+		opts, err := ParseArgs(args, "0.0.0")
 
 		assert.NoError(t, err)
 		assert.Equal(t, "cascader.tkb.ch/deployment", opts.DeploymentAnnotation)
@@ -83,20 +106,18 @@ func TestParseArgs(t *testing.T) {
 			"--requeue-after-default", "10s",
 			"--metrics-bind-address", ":9090",
 			"--health-probe-bind-address", ":9091",
-			"--leader-elect",
+			"--leader-elect=true",
 			"--metrics-enabled=false",
 			"--metrics-secure=false",
 			"--enable-http2",
 			"--log-encoder", "console",
-			"--log-stacktrace-level", "panic",
+			"--log-stacktrace-level", "info",
 			"--log-devel",
 		}
 
-		var output strings.Builder
+		opts, err := ParseArgs(args, "0.0.0")
 
-		opts, err := ParseArgs(args, &output, "0.0.0")
-
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "custom.deployment", opts.DeploymentAnnotation)
 		assert.Equal(t, "custom.statefulset", opts.StatefulSetAnnotation)
 		assert.Equal(t, "custom.daemonset", opts.DaemonSetAnnotation)
@@ -110,7 +131,7 @@ func TestParseArgs(t *testing.T) {
 		assert.False(t, opts.SecureMetrics)
 		assert.True(t, opts.EnableHTTP2)
 		assert.Equal(t, "console", opts.LogEncoder)
-		assert.Equal(t, "panic", opts.LogStacktraceLevel)
+		assert.Equal(t, "info", opts.LogStacktraceLevel)
 		assert.True(t, opts.LogDev)
 	})
 
@@ -118,8 +139,7 @@ func TestParseArgs(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--invalid-flag"}
-		var output strings.Builder
-		_, err := ParseArgs(args, &output, "0.0.0")
+		_, err := ParseArgs(args, "0.0.0")
 
 		assert.Error(t, err)
 		assert.EqualError(t, err, "unknown flag: --invalid-flag")
@@ -129,42 +149,41 @@ func TestParseArgs(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--help"}
-		var output strings.Builder
-		_, err := ParseArgs(args, &output, "0.0.0")
+		_, err := ParseArgs(args, "0.0.0")
 
-		assert.IsType(t, &HelpRequested{}, err)
 		assert.Error(t, err)
+		assert.True(t, tinyflags.IsHelpRequested(err))
 	})
 
 	t.Run("Test Version", func(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--version"}
-		var output strings.Builder
-		_, err := ParseArgs(args, &output, "0.0.0")
+		_, err := ParseArgs(args, "0.0.0")
 
-		assert.IsType(t, &HelpRequested{}, err)
 		assert.Error(t, err)
-		assert.EqualError(t, err, "Cascader version 0.0.0")
+		assert.True(t, tinyflags.IsVersionRequested(err))
 	})
 
 	t.Run("Multiple namespaces", func(t *testing.T) {
 		t.Parallel()
 
-		args := []string{"--watch-namespace", "ns1", "--watch-namespace", "ns2"}
-		opts, err := ParseArgs(args, io.Discard, "0.0.0")
+		args := []string{"--watch-namespace=ns1", "--watch-namespace", "ns2", "--watch-namespace=ns3,ns4"}
+		opts, err := ParseArgs(args, "0.0.0")
 
 		assert.NoError(t, err)
-		assert.Len(t, opts.WatchNamespaces, 2)
+		assert.Len(t, opts.WatchNamespaces, 4)
 		assert.Equal(t, "ns1", opts.WatchNamespaces[0])
 		assert.Equal(t, "ns2", opts.WatchNamespaces[1])
+		assert.Equal(t, "ns3", opts.WatchNamespaces[2])
+		assert.Equal(t, "ns4", opts.WatchNamespaces[3])
 	})
 
 	t.Run("Multiple namespaces, comma separated", func(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--watch-namespace", "ns1,ns2"}
-		opts, err := ParseArgs(args, io.Discard, "0.0.0")
+		opts, err := ParseArgs(args, "0.0.0")
 
 		assert.NoError(t, err)
 		assert.Len(t, opts.WatchNamespaces, 2)
@@ -176,7 +195,7 @@ func TestParseArgs(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--watch-namespace", "ns1", "--watch-namespace", "ns2,ns3"}
-		opts, err := ParseArgs(args, io.Discard, "0.0.0")
+		opts, err := ParseArgs(args, "0.0.0")
 
 		assert.NoError(t, err)
 		assert.Len(t, opts.WatchNamespaces, 3)
@@ -189,7 +208,7 @@ func TestParseArgs(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--metrics-bind-address", ":8080"}
-		opts, err := ParseArgs(args, io.Discard, "0.0.0")
+		opts, err := ParseArgs(args, "0.0.0")
 
 		assert.NoError(t, err)
 		assert.Equal(t, ":8080", opts.MetricsAddr)
@@ -199,7 +218,7 @@ func TestParseArgs(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--metrics-bind-address", "127.0.0.1:8080"}
-		opts, err := ParseArgs(args, io.Discard, "0.0.0")
+		opts, err := ParseArgs(args, "0.0.0")
 
 		assert.NoError(t, err)
 		assert.Equal(t, "127.0.0.1:8080", opts.MetricsAddr)
@@ -209,7 +228,7 @@ func TestParseArgs(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--metrics-bind-address", "localhost:8080"}
-		opts, err := ParseArgs(args, io.Discard, "0.0.0")
+		opts, err := ParseArgs(args, "0.0.0")
 
 		assert.NoError(t, err)
 		assert.Equal(t, "localhost:8080", opts.MetricsAddr)
@@ -219,7 +238,7 @@ func TestParseArgs(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--metrics-bind-address", ":80"}
-		opts, err := ParseArgs(args, io.Discard, "0.0.0")
+		opts, err := ParseArgs(args, "0.0.0")
 
 		assert.NoError(t, err)
 		assert.Equal(t, ":80", opts.MetricsAddr)
@@ -229,65 +248,17 @@ func TestParseArgs(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--metrics-bind-address", ":invalid"}
-		flags, err := ParseArgs(args, io.Discard, "0.0.0")
-		assert.NoError(t, err)
-
-		err = flags.Validate()
-
+		_, err := ParseArgs(args, "0.0.0")
 		assert.Error(t, err)
-		assert.EqualError(t, err, "invalid metrics listen address: lookup tcp/invalid: unknown port")
+		assert.EqualError(t, err, "invalid value for flag --metrics-bind-address: invalid TCP address \":invalid\": lookup tcp/invalid: unknown port")
 	})
 
 	t.Run("Invalid probes listen address (invalid)", func(t *testing.T) {
 		t.Parallel()
 
 		args := []string{"--health-probe-bind-address", ":invalid"}
-		flags, err := ParseArgs(args, io.Discard, "0.0.0")
-		assert.NoError(t, err)
-
-		err = flags.Validate()
+		_, err := ParseArgs(args, "0.0.0")
 		assert.Error(t, err)
-		assert.EqualError(t, err, "invalid probe listen address: lookup tcp/invalid: unknown port")
-	})
-}
-
-func TestConfigValidate(t *testing.T) {
-	t.Parallel()
-
-	t.Run("Valid listen addresses (127.0.0.1:8081)", func(t *testing.T) {
-		t.Parallel()
-
-		opts := Options{
-			MetricsAddr: "localhost:9090",
-			ProbeAddr:   "127.0.0.1:8081",
-		}
-
-		assert.NoError(t, opts.Validate())
-	})
-
-	t.Run("Invalid metrics address", func(t *testing.T) {
-		t.Parallel()
-
-		opts := Options{
-			MetricsAddr: ":invalid",
-			ProbeAddr:   ":8081",
-		}
-
-		err := opts.Validate()
-		assert.Error(t, err)
-		assert.EqualError(t, err, "invalid metrics listen address: lookup tcp/invalid: unknown port")
-	})
-
-	t.Run("Invalid probe address", func(t *testing.T) {
-		t.Parallel()
-
-		opts := Options{
-			MetricsAddr: ":9090",
-			ProbeAddr:   ":invalid",
-		}
-
-		err := opts.Validate()
-		assert.Error(t, err)
-		assert.EqualError(t, err, "invalid probe listen address: lookup tcp/invalid: unknown port")
+		assert.EqualError(t, err, "invalid value for flag --health-probe-bind-address: invalid TCP address \":invalid\": lookup tcp/invalid: unknown port")
 	})
 }
