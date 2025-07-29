@@ -3,7 +3,7 @@ module github.com/thurgauerkb/cascader
 go 1.24.4
 
 require (
-	github.com/containeroo/tinyflags v0.0.27
+	github.com/containeroo/tinyflags v0.0.29
 	github.com/go-logr/logr v1.4.3
 	github.com/google/uuid v1.6.0
 	github.com/onsi/ginkgo/v2 v2.23.4

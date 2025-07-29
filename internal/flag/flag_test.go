@@ -45,23 +45,23 @@ func TestHelpRequested(t *testing.T) {
 		assert.True(t, tinyflags.IsHelpRequested(err))
 		usage := `Usage: Cascader [flags]
 Flags:
-      --deployment-annotation ANN                Annotation key for monitored Deployments (Default: cascader.tkb.ch/deployment)
-      --statefulset-annotation ANN               Annotation key for monitored StatefulSets (Default: cascader.tkb.ch/statefulset)
-      --daemonset-annotation ANN                 Annotation key for monitored DaemonSets (Default: cascader.tkb.ch/daemonset)
-      --last-observed-restart-annotation ANN     Annotation key for last observed restart (Default: cascader.tkb.ch/last-observed-restart)
-      --requeue-after-annotation ANN             Annotation key for requeue interval override (Default: cascader.tkb.ch/requeue-after)
-      --requeue-after-default DUR                Default requeue interval (Minimum 2 Seconds) (Default: 5s)
-      --watch-namespace NS...                    Namespaces to watch (can be repeated or comma-separated)
-      --metrics-enabled <true|false>             Enable or disable the metrics endpoint (Default: true)
-      --metrics-bind-address ADDR                Metrics server address (Default: :8443)
-      --metrics-secure <true|false>              Serve metrics over HTTPS (Default: true)
-      --health-probe-bind-address ADDR           Health and readiness probe address (Default: :8081)
-      --enable-http2                             Enable HTTP/2 for servers
-      --leader-elect <true|false>                Enable leader election (Default: true)
-      --log-encoder <json|console>               Log format (json, console) (Allowed: json, console) (Default: json)
-      --log-devel                                Enable development mode logging
-      --log-stacktrace-level <info|error|panic>  Stacktrace log level (Allowed: info, error, panic) (Default: panic)
-  -h, --help                                     show help
+        --deployment-annotation ANN                Annotation key for monitored Deployments (Default: cascader.tkb.ch/deployment)
+        --statefulset-annotation ANN               Annotation key for monitored StatefulSets (Default: cascader.tkb.ch/statefulset)
+        --daemonset-annotation ANN                 Annotation key for monitored DaemonSets (Default: cascader.tkb.ch/daemonset)
+        --last-observed-restart-annotation ANN     Annotation key for last observed restart (Default: cascader.tkb.ch/last-observed-restart)
+        --requeue-after-annotation ANN             Annotation key for requeue interval override (Default: cascader.tkb.ch/requeue-after)
+        --requeue-after-default DUR                Default requeue interval (Minimum 2 Seconds) (Default: 5s)
+        --watch-namespace NS                       Namespaces to watch (can be repeated or comma-separated)
+        --metrics-enabled <true|false>             Enable or disable the metrics endpoint (Allowed: true, false) (Default: true)
+        --metrics-bind-address ADDR:PORT           Metrics server address (Default: :8443)
+        --metrics-secure <true|false>              Serve metrics over HTTPS (Allowed: true, false) (Default: true)
+        --health-probe-bind-address ADDR:PORT      Health and readiness probe address (Default: :8081)
+        --enable-http2                             Enable HTTP/2 for servers (Default: false)
+        --leader-elect <true|false>                Enable leader election (Allowed: true, false) (Default: true)
+        --log-encoder <json|console>               Log format (json, console) (Allowed: json, console) (Default: json)
+        --log-devel                                Enable development mode logging (Default: false)
+        --log-stacktrace-level <info|error|panic>  Stacktrace log level (Allowed: info, error, panic) (Default: panic)
+    -h, --help                                     show help (Default: false)
 `
 		assert.EqualError(t, err, usage)
 	})
@@ -231,7 +231,7 @@ func TestParseArgs(t *testing.T) {
 		opts, err := ParseArgs(args, "0.0.0")
 
 		assert.NoError(t, err)
-		assert.Equal(t, "localhost:8080", opts.MetricsAddr)
+		assert.Equal(t, "127.0.0.1:8080", opts.MetricsAddr)
 	})
 
 	t.Run("Valid metrics listen address (:80)", func(t *testing.T) {
@@ -250,7 +250,7 @@ func TestParseArgs(t *testing.T) {
 		args := []string{"--metrics-bind-address", ":invalid"}
 		_, err := ParseArgs(args, "0.0.0")
 		assert.Error(t, err)
-		assert.EqualError(t, err, "invalid value for flag --metrics-bind-address: invalid TCP address \":invalid\": lookup tcp/invalid: unknown port")
+		assert.EqualError(t, err, "invalid value for flag --metrics-bind-address: got invalid TCP address \":invalid\": lookup tcp/invalid: unknown port.")
 	})
 
 	t.Run("Invalid probes listen address (invalid)", func(t *testing.T) {
@@ -259,6 +259,6 @@ func TestParseArgs(t *testing.T) {
 		args := []string{"--health-probe-bind-address", ":invalid"}
 		_, err := ParseArgs(args, "0.0.0")
 		assert.Error(t, err)
-		assert.EqualError(t, err, "invalid value for flag --health-probe-bind-address: invalid TCP address \":invalid\": lookup tcp/invalid: unknown port")
+		assert.EqualError(t, err, "invalid value for flag --health-probe-bind-address: got invalid TCP address \":invalid\": lookup tcp/invalid: unknown port.")
 	})
 }

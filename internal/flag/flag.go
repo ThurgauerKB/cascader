@@ -100,11 +100,10 @@ func ParseArgs(args []string, version string) (Options, error) {
 		Strict().
 		Value()
 
-	healthProbeaddress := tf.TCPAddr("health-probe-bind-address", &net.TCPAddr{IP: nil, Port: 8001}, "Health and readiness probe address").
+	healthProbeaddress := tf.TCPAddr("health-probe-bind-address", &net.TCPAddr{IP: nil, Port: 8081}, "Health and readiness probe address").
 		Placeholder("ADDR:PORT").
 		Value()
 	tf.BoolVar(&options.EnableHTTP2, "enable-http2", false, "Enable HTTP/2 for servers").
-		Strict().
 		Value()
 	tf.BoolVar(&options.LeaderElection, "leader-elect", true, "Enable leader election").
 		Strict().
