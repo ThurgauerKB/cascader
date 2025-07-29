@@ -18,6 +18,7 @@ package flag
 
 import (
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/containeroo/tinyflags"
@@ -57,51 +58,50 @@ func ParseArgs(args []string, version string) (Options, error) {
 
 	tf := tinyflags.NewFlagSet("Cascader", tinyflags.ContinueOnError)
 	tf.Version(version)
-	tf.DescriptionIndent(48)
-	tf.DescriptionMaxLen(140)
 
 	tf.StringVar(&options.DeploymentAnnotation, "deployment-annotation", deploymentAnnotation, "Annotation key for monitored Deployments").
-		Metavar("ANN").
+		Placeholder("ANN").
 		Value()
 	tf.StringVar(&options.StatefulSetAnnotation, "statefulset-annotation", statefulSetAnnotation, "Annotation key for monitored StatefulSets").
-		Metavar("ANN").
+		Placeholder("ANN").
 		Value()
 	tf.StringVar(&options.DaemonSetAnnotation, "daemonset-annotation", daemonSetAnnotation, "Annotation key for monitored DaemonSets").
-		Metavar("ANN").
+		Placeholder("ANN").
 		Value()
 	tf.StringVar(&options.LastObservedRestartAnnotation, "last-observed-restart-annotation", lastObservedRestartAnnotation, "Annotation key for last observed restart").
-		Metavar("ANN").
+		Placeholder("ANN").
 		Value()
 	tf.StringVar(&options.RequeueAfterAnnotation, "requeue-after-annotation", requeueAfterAnnotation, "Annotation key for requeue interval override").
-		Metavar("ANN").
+		Placeholder("ANN").
 		Value()
 
 	tf.DurationVar(&options.RequeueAfterDefault, "requeue-after-default", 5*time.Second, "Default requeue interval (Minimum 2 Seconds)").
-		Validator(func(d time.Duration) error {
+		Validate(func(d time.Duration) error {
 			if d < 2*time.Second {
 				return fmt.Errorf("requeue-after-default must be at least 2 seconds")
 			}
 			return nil
 		}).
-		Metavar("DUR").
+		Placeholder("DUR").
 		Value()
 
 	tf.StringSliceVar(&options.WatchNamespaces, "watch-namespace", nil, "Namespaces to watch (can be repeated or comma-separated)").
-		Metavar("NS").
+		Placeholder("NS").
 		Value()
 
 	tf.BoolVar(&options.EnableMetrics, "metrics-enabled", true, "Enable or disable the metrics endpoint").
 		Strict().
 		Value()
-	tf.ListenAddrVar(&options.MetricsAddr, "metrics-bind-address", ":8443", "Metrics server address").
-		Metavar("ADDR").
+
+	metricsBindAddress := tf.TCPAddr("metrics-bind-address", &net.TCPAddr{IP: nil, Port: 8443}, "Metrics server address").
+		Placeholder("ADDR:PORT").
 		Value()
 	tf.BoolVar(&options.SecureMetrics, "metrics-secure", true, "Serve metrics over HTTPS").
 		Strict().
 		Value()
 
-	tf.ListenAddrVar(&options.ProbeAddr, "health-probe-bind-address", ":8081", "Health and readiness probe address").
-		Metavar("ADDR").
+	healthProbeaddress := tf.TCPAddr("health-probe-bind-address", &net.TCPAddr{IP: nil, Port: 8001}, "Health and readiness probe address").
+		Placeholder("ADDR:PORT").
 		Value()
 	tf.BoolVar(&options.EnableHTTP2, "enable-http2", false, "Enable HTTP/2 for servers").
 		Strict().
@@ -122,6 +122,9 @@ func ParseArgs(args []string, version string) (Options, error) {
 	if err := tf.Parse(args); err != nil {
 		return Options{}, err
 	}
+
+	options.MetricsAddr = (*metricsBindAddress).String()
+	options.ProbeAddr = (*healthProbeaddress).String()
 
 	return options, nil
 }
