@@ -104,6 +104,7 @@ func ParseArgs(args []string, version string) (Options, error) {
 		Metavar("ADDR").
 		Value()
 	tf.BoolVar(&options.EnableHTTP2, "enable-http2", false, "Enable HTTP/2 for servers").
+		Strict().
 		Value()
 	tf.BoolVar(&options.LeaderElection, "leader-elect", true, "Enable leader election").
 		Strict().
