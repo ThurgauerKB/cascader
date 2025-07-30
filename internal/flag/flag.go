@@ -76,7 +76,7 @@ func ParseArgs(args []string, version string) (Options, error) {
 		Value()
 
 	tf.DurationVar(&options.RequeueAfterDefault, "requeue-after-default", 5*time.Second, "Default requeue interval (Minimum 2 Seconds)").
-		Validate(func(d time.Duration) error {
+		Finalize(func(d time.Duration) error {
 			if d < 2*time.Second {
 				return fmt.Errorf("requeue-after-default must be at least 2 seconds")
 			}
