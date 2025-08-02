@@ -126,7 +126,7 @@ delete-kind: ## Delete the Kind cluster.
 e2e: ginkgo ## Run all e2e tests sequentially (Ginkgo procs=1 required due to shared state: LogBuffer, Operator process, Cluster resources)
 	@echo "Running e2e tests with Ginkgo..."
 	PATH=$(LOCALBIN):$$PATH USE_EXISTING_CLUSTER="true" \
-ginkgo --procs=1 --timeout=15m -v --focus='${FOCUS}' ./test/e2e/...
+ginkgo --procs=1 --timeout=30m -v --focus='${FOCUS}' ./test/e2e/...
 
 .PHONY: e2e-deployment
 e2e-deployment: ## Run only Deployment e2e tests

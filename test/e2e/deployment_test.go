@@ -27,7 +27,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 )
 
-var _ = Describe("Deployment workload", Ordered, func() {
+var _ = Describe("Deployment workload", Serial, Ordered, func() {
 	var ns string
 
 	BeforeAll(func() {

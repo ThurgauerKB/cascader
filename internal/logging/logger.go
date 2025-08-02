@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/thurgauerkb/cascader/internal/config"
+	"github.com/thurgauerkb/cascader/internal/flag"
 
 	"github.com/go-logr/logr"
 	uzap "go.uber.org/zap"
@@ -40,8 +40,8 @@ const (
 )
 
 // InitLogging initializes logging based on provided configuration.
-func InitLogging(cfg config.Config, out io.Writer) (logr.Logger, error) {
-	logger, err := setupLogger(cfg, out)
+func InitLogging(flags flag.Options, w io.Writer) (logr.Logger, error) {
+	logger, err := setupLogger(flags, w)
 	if err != nil {
 		return logr.Logger{}, err
 	}
@@ -53,20 +53,20 @@ func InitLogging(cfg config.Config, out io.Writer) (logr.Logger, error) {
 }
 
 // setupLogger configures and returns a logr.Logger based on given configuration.
-func setupLogger(cfg config.Config, out io.Writer) (logr.Logger, error) {
-	encoder, err := encoder(cfg.LogEncoder)
+func setupLogger(flags flag.Options, w io.Writer) (logr.Logger, error) {
+	encoder, err := encoder(flags.LogEncoder)
 	if err != nil {
 		return logr.Logger{}, err
 	}
 
-	stackLevel, err := stacktraceLevel(cfg.LogStacktraceLevel)
+	stackLevel, err := stacktraceLevel(flags.LogStacktraceLevel)
 	if err != nil {
 		return logr.Logger{}, err
 	}
 
 	opts := zap.Options{
-		Development:     cfg.LogDev,
-		DestWriter:      out,
+		Development:     flags.LogDev,
+		DestWriter:      w,
 		Encoder:         encoder,
 		StacktraceLevel: stackLevel,
 	}

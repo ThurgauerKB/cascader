@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/ginkgo/v2" // nolint:staticcheck
 )
 
-var _ = Describe("Edge cases", Ordered, func() {
+var _ = Describe("Edge cases", Serial, Ordered, func() {
 	AfterEach(func() {
 		testutils.StopOperator()
 	})
