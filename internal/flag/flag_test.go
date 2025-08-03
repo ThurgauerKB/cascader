@@ -40,28 +40,29 @@ func TestHelpRequested(t *testing.T) {
 	t.Run("show help", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := ParseArgs([]string{"--help"}, "")
+		_, err := ParseArgs([]string{"--help"}, "0.0.0")
 		assert.Error(t, err)
 		assert.True(t, tinyflags.IsHelpRequested(err))
 		usage := `Usage: Cascader [flags]
 Flags:
-        --deployment-annotation ANN                Annotation key for monitored Deployments (Default: cascader.tkb.ch/deployment)
-        --statefulset-annotation ANN               Annotation key for monitored StatefulSets (Default: cascader.tkb.ch/statefulset)
-        --daemonset-annotation ANN                 Annotation key for monitored DaemonSets (Default: cascader.tkb.ch/daemonset)
-        --last-observed-restart-annotation ANN     Annotation key for last observed restart (Default: cascader.tkb.ch/last-observed-restart)
-        --requeue-after-annotation ANN             Annotation key for requeue interval override (Default: cascader.tkb.ch/requeue-after)
-        --requeue-after-default DUR                Default requeue interval (Minimum 2 Seconds) (Default: 5s)
-        --watch-namespace NS                       Namespaces to watch (can be repeated or comma-separated)
-        --metrics-enabled <true|false>             Enable or disable the metrics endpoint (Allowed: true, false) (Default: true)
-        --metrics-bind-address ADDR:PORT           Metrics server address (Default: :8443)
-        --metrics-secure <true|false>              Serve metrics over HTTPS (Allowed: true, false) (Default: true)
-        --health-probe-bind-address ADDR:PORT      Health and readiness probe address (Default: :8081)
-        --enable-http2                             Enable HTTP/2 for servers (Default: false)
-        --leader-elect <true|false>                Enable leader election (Allowed: true, false) (Default: true)
-        --log-encoder <json|console>               Log format (json, console) (Allowed: json, console) (Default: json)
-        --log-devel                                Enable development mode logging (Default: false)
-        --log-stacktrace-level <info|error|panic>  Stacktrace log level (Allowed: info, error, panic) (Default: panic)
-    -h, --help                                     show help (Default: false)
+        --deployment-annotation ANNOTATION             Annotation key for monitored Deployments (Default: cascader.tkb.ch/deployment)
+        --statefulset-annotation ANNOTATION            Annotation key for monitored StatefulSets (Default: cascader.tkb.ch/statefulset)
+        --daemonset-annotation ANNOTATION              Annotation key for monitored DaemonSets (Default: cascader.tkb.ch/daemonset)
+        --last-observed-restart-annotation ANNOTATION  Annotation key for last observed restart (Default: cascader.tkb.ch/last-observed-restart)
+        --requeue-after-annotation ANNOTATION          Annotation key for requeue interval override (Default: cascader.tkb.ch/requeue-after)
+        --requeue-after-default DURATION               Default requeue interval (Minimum 1 Second) (Default: 5s)
+        --watch-namespace NAMESPACE                    Namespaces to watch (can be repeated or comma-separated)
+        --metrics-enabled <true|false>                 Enable or disable the metrics endpoint (Allowed: true, false) (Default: true)
+        --metrics-bind-address ADDR:PORT               Metrics server address (Default: :8443)
+        --metrics-secure <true|false>                  Serve metrics over HTTPS (Allowed: true, false) (Default: true)
+        --health-probe-bind-address ADDR:PORT          Health and readiness probe address (Default: :8081)
+        --enable-http2                                 Enable HTTP/2 for servers
+        --leader-elect <true|false>                    Enable leader election (Allowed: true, false) (Default: true)
+        --log-encoder <json|console>                   Log format (json, console) (Allowed: json, console) (Default: json)
+        --log-devel                                    Enable development mode logging
+        --log-stacktrace-level <info|error|panic>      Stacktrace log level (Allowed: info, error, panic) (Default: panic)
+    -h, --help                                         show help
+        --version                                      show version
 `
 		assert.EqualError(t, err, usage)
 	})
