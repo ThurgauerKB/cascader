@@ -60,33 +60,33 @@ func ParseArgs(args []string, version string) (Options, error) {
 	tf.Version(version)
 
 	tf.StringVar(&options.DeploymentAnnotation, "deployment-annotation", deploymentAnnotation, "Annotation key for monitored Deployments").
-		Placeholder("ANN").
+		Placeholder("ANNOTATION").
 		Value()
 	tf.StringVar(&options.StatefulSetAnnotation, "statefulset-annotation", statefulSetAnnotation, "Annotation key for monitored StatefulSets").
-		Placeholder("ANN").
+		Placeholder("ANNOTATION").
 		Value()
 	tf.StringVar(&options.DaemonSetAnnotation, "daemonset-annotation", daemonSetAnnotation, "Annotation key for monitored DaemonSets").
-		Placeholder("ANN").
+		Placeholder("ANNOTATION").
 		Value()
 	tf.StringVar(&options.LastObservedRestartAnnotation, "last-observed-restart-annotation", lastObservedRestartAnnotation, "Annotation key for last observed restart").
-		Placeholder("ANN").
+		Placeholder("ANNOTATION").
 		Value()
 	tf.StringVar(&options.RequeueAfterAnnotation, "requeue-after-annotation", requeueAfterAnnotation, "Annotation key for requeue interval override").
-		Placeholder("ANN").
+		Placeholder("ANNOTATION").
 		Value()
 
-	tf.DurationVar(&options.RequeueAfterDefault, "requeue-after-default", 5*time.Second, "Default requeue interval (Minimum 2 Seconds)").
+	tf.DurationVar(&options.RequeueAfterDefault, "requeue-after-default", 5*time.Second, "Default requeue interval (Minimum 1 Second)").
 		Validate(func(d time.Duration) error {
-			if d < 2*time.Second {
-				return fmt.Errorf("requeue-after-default must be at least 2 seconds")
+			if d < 1*time.Second {
+				return fmt.Errorf("requeue-after-default must be at least 1 second")
 			}
 			return nil
 		}).
-		Placeholder("DUR").
+		Placeholder("DURATION").
 		Value()
 
 	tf.StringSliceVar(&options.WatchNamespaces, "watch-namespace", nil, "Namespaces to watch (can be repeated or comma-separated)").
-		Placeholder("NS").
+		Placeholder("NAMESPACE").
 		Value()
 
 	tf.BoolVar(&options.EnableMetrics, "metrics-enabled", true, "Enable or disable the metrics endpoint").
