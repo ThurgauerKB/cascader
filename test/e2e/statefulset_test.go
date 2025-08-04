@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/ginkgo/v2" // nolint:staticcheck
 )
 
-var _ = Describe("StatefulSet workload", Ordered, func() {
+var _ = Describe("StatefulSet workload", Serial, Ordered, func() {
 	var ns string
 
 	BeforeAll(func() {

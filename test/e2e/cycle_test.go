@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/ginkgo/v2" // nolint:staticcheck
 )
 
-var _ = Describe("Cycle Detection", Ordered, func() {
+var _ = Describe("Cycle Detection", Serial, Ordered, func() {
 	var ns string
 
 	BeforeAll(func() {
