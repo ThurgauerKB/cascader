@@ -63,6 +63,8 @@ Flags:
         --log-stacktrace-level <info|error|panic>      Stacktrace log level (Default: panic)
     -h, --help                                         show help
         --version                                      show version
+
+Each flag can also be set via environment variable using the CASCADER_ prefix, e.g.: --log-encoder=json → CASCADER_LOG_ENCODER=json
 `
 		assert.EqualError(t, err, usage)
 	})
