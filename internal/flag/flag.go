@@ -58,6 +58,9 @@ func ParseArgs(args []string, version string) (Options, error) {
 
 	tf := tinyflags.NewFlagSet("Cascader", tinyflags.ContinueOnError)
 	tf.Version(version)
+	tf.EnvPrefix("cascader")
+	tf.HideEnvs()
+	tf.Note("\nEach flag can also be set via environment variable using the CASCADER_ prefix, e.g.: --log-encoder=json → CASCADER_LOG_ENCODER=json")
 
 	tf.StringVar(&options.DeploymentAnnotation, "deployment-annotation", deploymentAnnotation, "Annotation key for monitored Deployments").
 		Placeholder("ANNOTATION").
