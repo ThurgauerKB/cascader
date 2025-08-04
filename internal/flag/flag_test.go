@@ -52,15 +52,15 @@ Flags:
         --requeue-after-annotation ANNOTATION          Annotation key for requeue interval override (Default: cascader.tkb.ch/requeue-after)
         --requeue-after-default DURATION               Default requeue interval (Minimum 1 Second) (Default: 5s)
         --watch-namespace NAMESPACE                    Namespaces to watch (can be repeated or comma-separated)
-        --metrics-enabled <true|false>                 Enable or disable the metrics endpoint (Allowed: true, false) (Default: true)
+        --metrics-enabled <true|false>                 Enable or disable the metrics endpoint (Default: true)
         --metrics-bind-address ADDR:PORT               Metrics server address (Default: :8443)
-        --metrics-secure <true|false>                  Serve metrics over HTTPS (Allowed: true, false) (Default: true)
+        --metrics-secure <true|false>                  Serve metrics over HTTPS (Default: true)
         --health-probe-bind-address ADDR:PORT          Health and readiness probe address (Default: :8081)
-        --enable-http2                                 Enable HTTP/2 for servers
-        --leader-elect <true|false>                    Enable leader election (Allowed: true, false) (Default: true)
-        --log-encoder <json|console>                   Log format (json, console) (Allowed: json, console) (Default: json)
+        --enable-http2 <true|false>                    Enable HTTP/2 for servers (Default: false)
+        --leader-elect <true|false>                    Enable leader election (Default: true)
+        --log-encoder <json|console>                   Log format (json, console) (Default: json)
         --log-devel                                    Enable development mode logging
-        --log-stacktrace-level <info|error|panic>      Stacktrace log level (Allowed: info, error, panic) (Default: panic)
+        --log-stacktrace-level <info|error|panic>      Stacktrace log level (Default: panic)
     -h, --help                                         show help
         --version                                      show version
 `
@@ -110,7 +110,7 @@ func TestParseArgs(t *testing.T) {
 			"--leader-elect=true",
 			"--metrics-enabled=false",
 			"--metrics-secure=false",
-			"--enable-http2",
+			"--enable-http2=false",
 			"--log-encoder", "console",
 			"--log-stacktrace-level", "info",
 			"--log-devel",
@@ -130,7 +130,7 @@ func TestParseArgs(t *testing.T) {
 		assert.True(t, opts.LeaderElection)
 		assert.False(t, opts.EnableMetrics)
 		assert.False(t, opts.SecureMetrics)
-		assert.True(t, opts.EnableHTTP2)
+		assert.False(t, opts.EnableHTTP2)
 		assert.Equal(t, "console", opts.LogEncoder)
 		assert.Equal(t, "info", opts.LogStacktraceLevel)
 		assert.True(t, opts.LogDev)

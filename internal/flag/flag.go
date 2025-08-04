@@ -91,6 +91,7 @@ func ParseArgs(args []string, version string) (Options, error) {
 
 	tf.BoolVar(&options.EnableMetrics, "metrics-enabled", true, "Enable or disable the metrics endpoint").
 		Strict().
+		HideAllowed().
 		Value()
 
 	metricsBindAddress := tf.TCPAddr("metrics-bind-address", &net.TCPAddr{IP: nil, Port: 8443}, "Metrics server address").
@@ -98,24 +99,30 @@ func ParseArgs(args []string, version string) (Options, error) {
 		Value()
 	tf.BoolVar(&options.SecureMetrics, "metrics-secure", true, "Serve metrics over HTTPS").
 		Strict().
+		HideAllowed().
 		Value()
 
 	healthProbeaddress := tf.TCPAddr("health-probe-bind-address", &net.TCPAddr{IP: nil, Port: 8081}, "Health and readiness probe address").
 		Placeholder("ADDR:PORT").
 		Value()
 	tf.BoolVar(&options.EnableHTTP2, "enable-http2", false, "Enable HTTP/2 for servers").
+		Strict().
+		HideAllowed().
 		Value()
 	tf.BoolVar(&options.LeaderElection, "leader-elect", true, "Enable leader election").
 		Strict().
+		HideAllowed().
 		Value()
 
 	tf.StringVar(&options.LogEncoder, "log-encoder", "json", "Log format (json, console)").
 		Choices("json", "console").
+		HideAllowed().
 		Value()
 
 	tf.BoolVar(&options.LogDev, "log-devel", false, "Enable development mode logging").Value()
 	tf.StringVar(&options.LogStacktraceLevel, "log-stacktrace-level", "panic", "Stacktrace log level").
 		Choices("info", "error", "panic").
+		HideAllowed().
 		Value()
 
 	if err := tf.Parse(args); err != nil {
