@@ -3,16 +3,6 @@ name: Run Unit and E2E Tests
 
 on:
   workflow_call:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "cmd/**"
-      - "internal/**"
-      - "test/**"
-      - "go.mod"
-      - "go.sum"
-      - "Dockerfile"
   workflow_dispatch:
 
 env:

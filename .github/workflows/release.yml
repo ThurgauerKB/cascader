@@ -3,9 +3,6 @@ name: Runs tests and builds a release
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - "v*"
 
 jobs:
   tests:

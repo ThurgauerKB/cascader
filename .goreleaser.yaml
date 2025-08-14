@@ -18,8 +18,8 @@ builds:
       - -X main.Version={{ .Tag }}
 dockers:
   - image_templates:
-      - ghcr.io/thurgauerkb/cascader:latest
-      - ghcr.io/thurgauerkb/cascader:{{ .Tag }}
+      - ghcr.io/gi8lino/cascader:latest
+      - ghcr.io/gi8lino/cascader:{{ .Tag }}
     use: buildx
     dockerfile: Dockerfile
     extra_files:
@@ -33,14 +33,14 @@ dockers:
       - --platform=linux/amd64
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
-      - --label=org.opencontainers.image.url=https://github.com/thurgauerkb/cascader
-      - --label=org.opencontainers.image.source=https://github.com/thurgauerkb/cascader
+      - --label=org.opencontainers.image.url=https://github.com/gi8lino/cascader
+      - --label=org.opencontainers.image.source=https://github.com/gi8lino/cascader
       - --label=org.opencontainers.image.version={{ .Version }}
       - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
       - --label=org.opencontainers.image.licenses="GNU General Public License v3.0"
 docker_manifests:
-  - name_template: ghcr.io/thurgauerkb/cascader:{{ .Tag }}
+  - name_template: ghcr.io/gi8lino/cascader:{{ .Tag }}
     image_templates:
-      - ghcr.io/thurgauerkb/cascader:{{ .Tag }}
-      - ghcr.io/thurgauerkb/cascader:latest
+      - ghcr.io/gi8lino/cascader:{{ .Tag }}
+      - ghcr.io/gi8lino/cascader:latest
