@@ -185,7 +185,7 @@ spec:
     spec:
       containers:
         - name: cascader
-          image: ghcr.io/thurgauerkb/cascader:v0.2.5
+          image: ghcr.io/thurgauerkb/cascader:v0.2.10
           ports:
             - name: metrics
               containerPort: 8443
