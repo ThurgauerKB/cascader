@@ -1,0 +1,52 @@
+---
+name: Unit Tests
+
+on:
+  workflow_call:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "cmd/**"
+      - "internal/**"
+      - "go.mod"
+      - "go.sum"
+      - "Dockerfile.goreleaser"
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    container:
+      image: golang:1.25
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install build tools
+        run: |
+          apt-get update
+          apt-get install -y make
+
+      - name: Set up Go cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            /go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download deps
+        run: make download
+
+      - name: Run unit tests
+        run: make test
+
+      - name: Run e2e tests
+        run: make e2e
