@@ -25,6 +25,7 @@ import (
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -116,7 +117,7 @@ func TestDeploymentTarget_Reload(t *testing.T) {
 
 		err := target.Trigger(context.TODO())
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "simulated get error")
 	})
 
@@ -168,7 +169,7 @@ func TestDeploymentTarget_Reload(t *testing.T) {
 
 		err := target.Trigger(context.TODO())
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "simulated patch error")
 	})
 }

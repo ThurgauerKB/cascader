@@ -98,7 +98,7 @@ func TestWorkloadFactory_NewWorkload(t *testing.T) {
 		}
 
 		workload, err := NewWorkload(unsupportedObj)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Nil(t, workload)
 		assert.Contains(t, err.Error(), "unsupported workload type")
 	})

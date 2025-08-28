@@ -24,6 +24,7 @@ import (
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -46,7 +47,7 @@ func TestCreateTarget(t *testing.T) {
 		target, err := NewTarget(context.TODO(), mockClient, kinds.DeploymentKind, "not/valid/reference", origin)
 
 		assert.Nil(t, target, "Expected nil target for for invalid reference")
-		assert.Error(t, err, "Expected error for invalid reference")
+		require.Error(t, err, "Expected error for invalid reference")
 	})
 
 	t.Run("Valid Deployment Target", func(t *testing.T) {
@@ -109,7 +110,7 @@ func TestCreateTarget(t *testing.T) {
 
 		target, err := NewTarget(context.TODO(), mockClient, "ReplicaSet", "default/test-replicaset", origin)
 
-		assert.Error(t, err, "Expected error for unsupported workload type")
+		require.Error(t, err, "Expected error for unsupported workload type")
 		assert.Nil(t, target, "Expected a nil target for unsupported workload type")
 		assert.EqualError(t, err, "unsupported target kind: ReplicaSet")
 	})
