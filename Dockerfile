@@ -24,11 +24,25 @@ COPY internal/ internal
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
 RUN GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -ldflags="$LDFLAGS" -a -o cascader cmd/main.go
 
+RUN mkdir -p /outfs/work /outfs/tmp \
+  # Change group ownership of /work and /tmp to GID 0 (root group),
+  # because OpenShift assigns containers a random UID but always includes them in group 0.
+  && chgrp -R 0 /outfs/work /outfs/tmp \
+  # Give group 0 read/write/execute (X only applies to dirs or already-executable files).
+  # This makes the dirs writable by arbitrary UIDs in group 0.
+  && chmod -R g+rwX /outfs/work /outfs/tmp \
+  # Set the setgid bit on the dirs so that any new files/dirs created inside
+  # will inherit group 0 instead of the creator's primary group.
+  && chmod g+s /outfs/work /outfs/tmp
+
+
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
-WORKDIR /
+COPY --from=prep /outfs/work /work
+COPY --from=prep /outfs/tmp  /tmp
+ENV HOME=/tmp
+WORKDIR /work
 COPY --from=builder /workspace/cascader .
 USER 65532:65532
-
 ENTRYPOINT ["/cascader"]
