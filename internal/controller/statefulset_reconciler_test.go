@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"context"
 	"testing"
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
@@ -74,7 +73,7 @@ func TestStatefulSetReconciler_Reconcile(t *testing.T) {
 			Name:      "nonexistent-statefulset",
 		}}
 
-		result, err := reconciler.Reconcile(context.Background(), req)
+		result, err := reconciler.Reconcile(t.Context(), req)
 		assert.NoError(t, err, "Expected no error when StatefulSet is not found")
 		assert.Equal(t, ctrl.Result{}, result, "Expected empty result when StatefulSet is not found")
 	})
@@ -99,7 +98,7 @@ func TestStatefulSetReconciler_Reconcile(t *testing.T) {
 			Name:      "error-statefulset",
 		}}
 
-		result, err := reconciler.Reconcile(context.Background(), req)
+		result, err := reconciler.Reconcile(t.Context(), req)
 		assert.Error(t, err, "Expected error when Get fails")
 		assert.Contains(t, err.Error(), "failed to fetch StatefulSet")
 		assert.Equal(t, ctrl.Result{}, result, "Expected empty result when Get fails")
@@ -133,7 +132,7 @@ func TestStatefulSetReconciler_Reconcile(t *testing.T) {
 			Name:      "test-statefulset",
 		}}
 
-		result, err := reconciler.Reconcile(context.Background(), req)
+		result, err := reconciler.Reconcile(t.Context(), req)
 		assert.NoError(t, err, "Expected no error on successful reconciliation")
 		assert.Equal(t, ctrl.Result{}, result, "Expected successful result")
 	})

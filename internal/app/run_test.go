@@ -32,7 +32,7 @@ func TestRun(t *testing.T) {
 	t.Run("Smoke", func(t *testing.T) {
 		t.Parallel()
 
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 
 		args := []string{
@@ -64,7 +64,7 @@ func TestRun(t *testing.T) {
 	t.Run("Invalid args", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 		args := []string{"--invalid-flag"}
 		out := &bytes.Buffer{}
 
@@ -77,7 +77,7 @@ func TestRun(t *testing.T) {
 	t.Run("Request Help", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 		args := []string{"--version"}
 		out := &bytes.Buffer{}
 
@@ -90,7 +90,7 @@ func TestRun(t *testing.T) {
 	t.Run("Logger error", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 		args := []string{"--log-encoder", "invalid"}
 		out := &bytes.Buffer{}
 
@@ -101,7 +101,7 @@ func TestRun(t *testing.T) {
 	})
 
 	t.Run("Leader Election", func(t *testing.T) {
-		ctx := context.Background()
+		ctx := t.Context()
 		args := []string{
 			"--health-probe-bind-address", ":8082",
 		}
@@ -116,7 +116,7 @@ func TestRun(t *testing.T) {
 	t.Run("Not unique Annotations", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 		args := []string{
 			"--health-probe-bind-address", ":8085",
 			"--leader-elect=false",

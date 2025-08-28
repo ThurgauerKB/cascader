@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -72,7 +71,7 @@ func TestCheckCycle(t *testing.T) {
 			targets.NewDeployment("no-cycle", "service-a", fakeClient),
 		}
 
-		err := reconciler.checkCycle(context.Background(), srcID, targetDeps)
+		err := reconciler.checkCycle(t.Context(), srcID, targetDeps)
 		assert.NoError(t, err)
 	})
 
@@ -103,7 +102,7 @@ func TestCheckCycle(t *testing.T) {
 			targets.NewDeployment("direct-cycle", "backend", fakeClient),
 		}
 
-		err := reconciler.checkCycle(context.Background(), srcID, targetDeps)
+		err := reconciler.checkCycle(t.Context(), srcID, targetDeps)
 		assert.Error(t, err)
 		assert.EqualError(t, err, "direct cycle detected: adding dependency from Deployment/direct-cycle/backend creates a direct cycle: Deployment/direct-cycle/backend")
 	})
@@ -144,7 +143,7 @@ func TestCheckCycle(t *testing.T) {
 			targets.NewDeployment("indirect-cycle", "second", fakeClient),
 		}
 
-		err := reconciler.checkCycle(context.Background(), srcID, targetDeps)
+		err := reconciler.checkCycle(t.Context(), srcID, targetDeps)
 		assert.Error(t, err)
 		assert.EqualError(t, err, "indirect cycle detected: adding dependency from Deployment/indirect-cycle/first creates a indirect cycle: Deployment/indirect-cycle/first -> Deployment/indirect-cycle/second -> Deployment/indirect-cycle/first")
 	})
@@ -186,7 +185,7 @@ func TestCheckCycle(t *testing.T) {
 			targets.NewDeployment("error-fetching", "second", fakeClient),
 		}
 
-		err := reconciler.checkCycle(context.Background(), srcID, targetDeps)
+		err := reconciler.checkCycle(t.Context(), srcID, targetDeps)
 		assert.Error(t, err)
 		assert.EqualError(t, err, "dependency cycle check failed: failed to fetch resource Deployment/error-fetching/non-existing: deployments.apps \"non-existing\" not found")
 	})
@@ -228,7 +227,7 @@ func TestCheckCycle(t *testing.T) {
 			targets.NewDeployment("error-extracting", "second", fakeClient),
 		}
 
-		err := reconciler.checkCycle(context.Background(), srcID, targetDeps)
+		err := reconciler.checkCycle(t.Context(), srcID, targetDeps)
 		assert.Error(t, err)
 		assert.EqualError(t, err, "dependency cycle check failed: error extracting dependencies: cannot create target for workload: invalid reference: invalid format: invalid/target/annotation")
 	})
@@ -243,7 +242,7 @@ func TestDetectCycle(t *testing.T) {
 	t.Run("Cycle detected when visiting the same node twice", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 		target := targets.NewDeployment("test-namespace", "test-deployment", fakeClient)
@@ -260,7 +259,7 @@ func TestDetectCycle(t *testing.T) {
 	t.Run("Fails to fetch resource", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 		target := targets.NewDeployment("test-namespace", "test-deployment", fakeClient)
@@ -281,7 +280,7 @@ func TestDetectCycle(t *testing.T) {
 	t.Run("Indirect cycle detected", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		depA := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -338,7 +337,7 @@ func TestDetectCycle(t *testing.T) {
 	t.Run("Ignore empty target", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		depA := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -389,7 +388,7 @@ func TestDetectCycle(t *testing.T) {
 	t.Run("Error during traversal - target not found", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		depA := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{

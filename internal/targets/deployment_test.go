@@ -17,7 +17,6 @@ limitations under the License.
 package targets
 
 import (
-	"context"
 	"testing"
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
@@ -115,7 +114,7 @@ func TestDeploymentTarget_Reload(t *testing.T) {
 			mockClient,
 		)
 
-		err := target.Trigger(context.TODO())
+		err := target.Trigger(t.Context())
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "simulated get error")
@@ -135,11 +134,11 @@ func TestDeploymentTarget_Reload(t *testing.T) {
 			fakeClient,
 		)
 
-		err := target.Trigger(context.TODO())
+		err := target.Trigger(t.Context())
 		assert.NoError(t, err)
 
 		updatedDeployment := &appsv1.Deployment{}
-		_ = fakeClient.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "test-deployment"}, updatedDeployment)
+		_ = fakeClient.Get(t.Context(), client.ObjectKey{Namespace: "default", Name: "test-deployment"}, updatedDeployment)
 
 		assert.Contains(t, updatedDeployment.Spec.Template.Annotations, utils.LastObservedRestartKey)
 		assert.NotEmpty(t, updatedDeployment.Spec.Template.Annotations[utils.LastObservedRestartKey])
@@ -167,7 +166,7 @@ func TestDeploymentTarget_Reload(t *testing.T) {
 			mockClient,
 		)
 
-		err := target.Trigger(context.TODO())
+		err := target.Trigger(t.Context())
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "simulated patch error")

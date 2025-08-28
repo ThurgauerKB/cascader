@@ -17,7 +17,6 @@ limitations under the License.
 package utils
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -273,7 +272,7 @@ func TestPatchPodTemplateAnnotation(t *testing.T) {
 	t.Run("Successful Patch", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -310,7 +309,7 @@ func TestPatchPodTemplateAnnotation(t *testing.T) {
 	t.Run("Invalid Object Type", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 		invalid := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod1",
@@ -337,7 +336,7 @@ func TestPatchWorkloadAnnotation(t *testing.T) {
 	t.Run("Successful Patch", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -372,7 +371,7 @@ func TestPatchWorkloadAnnotation(t *testing.T) {
 	t.Run("Invalid Object Type", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 		invalid := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod1",
@@ -399,7 +398,7 @@ func TestDeleteWorkloadAnnotation(t *testing.T) {
 	t.Run("Successful Delete", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -437,7 +436,7 @@ func TestDeleteWorkloadAnnotation(t *testing.T) {
 	t.Run("Successful Delete (no annotation)", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -473,7 +472,7 @@ func TestDeleteWorkloadAnnotation(t *testing.T) {
 	t.Run("Keeps unrelated annotations", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -515,7 +514,7 @@ func TestDeleteWorkloadAnnotation(t *testing.T) {
 	t.Run("Patch failure", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{

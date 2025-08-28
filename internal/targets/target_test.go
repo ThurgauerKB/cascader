@@ -17,7 +17,6 @@ limitations under the License.
 package targets
 
 import (
-	"context"
 	"testing"
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
@@ -44,7 +43,7 @@ func TestCreateTarget(t *testing.T) {
 			},
 		}
 
-		target, err := NewTarget(context.TODO(), mockClient, kinds.DeploymentKind, "not/valid/reference", origin)
+		target, err := NewTarget(t.Context(), mockClient, kinds.DeploymentKind, "not/valid/reference", origin)
 
 		assert.Nil(t, target, "Expected nil target for for invalid reference")
 		require.Error(t, err, "Expected error for invalid reference")
@@ -60,7 +59,7 @@ func TestCreateTarget(t *testing.T) {
 			},
 		}
 
-		target, err := NewTarget(context.TODO(), mockClient, kinds.DeploymentKind, "default/test-deployment", origin)
+		target, err := NewTarget(t.Context(), mockClient, kinds.DeploymentKind, "default/test-deployment", origin)
 
 		assert.NoError(t, err, "Expected no error for Deployment target creation")
 		assert.NotNil(t, target, "Expected a non-nil target for Deployment")
@@ -76,7 +75,7 @@ func TestCreateTarget(t *testing.T) {
 			},
 		}
 
-		target, err := NewTarget(context.TODO(), mockClient, kinds.StatefulSetKind, "default/test-statefulset", origin)
+		target, err := NewTarget(t.Context(), mockClient, kinds.StatefulSetKind, "default/test-statefulset", origin)
 
 		assert.NoError(t, err, "Expected no error for StatefulSet target creation")
 		assert.NotNil(t, target, "Expected a non-nil target for StatefulSet")
@@ -92,7 +91,7 @@ func TestCreateTarget(t *testing.T) {
 			},
 		}
 
-		target, err := NewTarget(context.TODO(), mockClient, kinds.DaemonSetKind, "default/test-daemonset", origin)
+		target, err := NewTarget(t.Context(), mockClient, kinds.DaemonSetKind, "default/test-daemonset", origin)
 
 		assert.NoError(t, err, "Expected no error for DaemonSet target creation")
 		assert.NotNil(t, target, "Expected a non-nil target for DaemonSet")
@@ -108,7 +107,7 @@ func TestCreateTarget(t *testing.T) {
 			},
 		}
 
-		target, err := NewTarget(context.TODO(), mockClient, "ReplicaSet", "default/test-replicaset", origin)
+		target, err := NewTarget(t.Context(), mockClient, "ReplicaSet", "default/test-replicaset", origin)
 
 		require.Error(t, err, "Expected error for unsupported workload type")
 		assert.Nil(t, target, "Expected a nil target for unsupported workload type")

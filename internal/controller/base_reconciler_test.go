@@ -18,7 +18,6 @@ package controller
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -99,7 +98,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 
 		reconciler := createBaseReconciler()
 
-		_, err := reconciler.ReconcileWorkload(context.Background(), obj)
+		_, err := reconciler.ReconcileWorkload(t.Context(), obj)
 		assert.Error(t, err, "Expected error for invalid workload kind")
 		assert.Contains(t, err.Error(), "unsupported workload type: *v1.ReplicaSet", "Expected error message to indicate invalid ReplicaSet")
 	})
@@ -161,7 +160,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		reconciler := createBaseReconciler(dep1, targetObj)
 		reconciler.Logger = &logger
 
-		result, err := reconciler.ReconcileWorkload(context.Background(), dep1)
+		result, err := reconciler.ReconcileWorkload(t.Context(), dep1)
 		assert.NoError(t, err, "Expected no error on successful reconciliation")
 		expectedResult := ctrl.Result{}
 		assert.Equal(t, expectedResult, result, "Expected successful result")
@@ -222,7 +221,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 
 		reconciler := createBaseReconciler(dep1, targetObj)
 
-		result, err := reconciler.ReconcileWorkload(context.Background(), dep1)
+		result, err := reconciler.ReconcileWorkload(t.Context(), dep1)
 		assert.Error(t, err)
 		assert.EqualError(t, err, "failed to create targets: cannot create target for workload: invalid reference: invalid format: invalid/target/annotation")
 		expectedResult := ctrl.Result{}
@@ -289,7 +288,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		reconciler := createBaseReconciler(dep1, targetObj)
 		reconciler.Logger = &logger
 
-		result, err := reconciler.ReconcileWorkload(context.Background(), dep1)
+		result, err := reconciler.ReconcileWorkload(t.Context(), dep1)
 		assert.NoError(t, err, "Expected no error on successful reconciliation")
 		expectedResult := ctrl.Result{RequeueAfter: defaultRequeuAfter}
 		assert.Equal(t, expectedResult, result, "Expected successful result with default requeue duration")
@@ -348,7 +347,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		reconciler := createBaseReconciler(obj, targetObj)
 		reconciler.Logger = &logger
 
-		result, err := reconciler.ReconcileWorkload(context.Background(), obj)
+		result, err := reconciler.ReconcileWorkload(t.Context(), obj)
 		assert.NoError(t, err, "Expected no error on successful reconciliation")
 		expectedResult := ctrl.Result{}
 		assert.Equal(t, expectedResult, result, "Expected successful result with default requeue duration")
@@ -370,7 +369,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 
 		reconciler := createBaseReconciler(obj)
 
-		result, err := reconciler.ReconcileWorkload(context.Background(), obj)
+		result, err := reconciler.ReconcileWorkload(t.Context(), obj)
 		assert.NoError(t, err, "Expected no error when no workload targets are found")
 		assert.Equal(t, ctrl.Result{}, result, "Expected empty result when no workload targets are found")
 	})
@@ -405,7 +404,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		reconciler := createBaseReconciler(obj)
 		reconciler.Logger = &logger
 
-		result, err := reconciler.ReconcileWorkload(context.Background(), obj)
+		result, err := reconciler.ReconcileWorkload(t.Context(), obj)
 		assert.NoError(t, err, "Expected no error on successful reconciliation")
 		expectedResult := ctrl.Result{}
 		assert.Equal(t, expectedResult, result, "Expected successful result")
@@ -476,7 +475,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		reconciler := createBaseReconciler(obj, targetObj)
 		reconciler.Logger = &logger
 
-		result, err := reconciler.ReconcileWorkload(context.Background(), obj)
+		result, err := reconciler.ReconcileWorkload(t.Context(), obj)
 		assert.NoError(t, err, "Expected no error on successful reconciliation")
 		expectedResult := ctrl.Result{}
 		assert.Equal(t, expectedResult, result, "Expected successful result")
@@ -534,7 +533,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 
 		reconciler := createBaseReconciler(sourceObj, targetObj)
 
-		result, err := reconciler.ReconcileWorkload(context.Background(), sourceObj)
+		result, err := reconciler.ReconcileWorkload(t.Context(), sourceObj)
 
 		assert.NoError(t, err, "Expected no error during reconciliation")
 		expectedResult := ctrl.Result{RequeueAfter: defaultRequeuAfter}
@@ -609,7 +608,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		reconciler.Logger = &logger
 		reconciler.KubeClient = fakeClient
 
-		result, err := reconciler.ReconcileWorkload(context.Background(), obj)
+		result, err := reconciler.ReconcileWorkload(t.Context(), obj)
 		assert.NoError(t, err)
 		expectedResult := ctrl.Result{}
 		assert.Equal(t, expectedResult, result, "Expected successful result")
@@ -664,7 +663,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		reconciler.Logger = &logger
 		reconciler.KubeClient = fakeClient
 
-		result, err := reconciler.ReconcileWorkload(context.Background(), obj)
+		result, err := reconciler.ReconcileWorkload(t.Context(), obj)
 		assert.Error(t, err)
 		expectedResult := ctrl.Result{}
 		assert.Equal(t, expectedResult, result, "Expected successful result")
@@ -681,7 +680,7 @@ func TestSetLastObservedRestartAnnotation(t *testing.T) {
 
 	t.Run("Successful patch", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -719,7 +718,7 @@ func TestClearLastObservedRestartAnnotation(t *testing.T) {
 
 	t.Run("Successful patch", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -763,7 +762,7 @@ func TestExtractTargets(t *testing.T) {
 			},
 		}
 
-		targets, err := reconciler.extractTargets(context.Background(), obj)
+		targets, err := reconciler.extractTargets(t.Context(), obj)
 		assert.Empty(t, targets)
 		assert.NoError(t, err)
 	})
@@ -803,7 +802,7 @@ func TestExtractTargets(t *testing.T) {
 			},
 		}
 
-		targets, err := reconciler.extractTargets(context.Background(), obj)
+		targets, err := reconciler.extractTargets(t.Context(), obj)
 		assert.NoError(t, err)
 		assert.Len(t, targets, 1, "Expected no targets to be extracted")
 	})
@@ -823,7 +822,7 @@ func TestExtractTargets(t *testing.T) {
 			},
 		}
 
-		targets, err := reconciler.extractTargets(context.Background(), obj)
+		targets, err := reconciler.extractTargets(t.Context(), obj)
 
 		assert.NoError(t, err)
 		assert.Len(t, targets, 0)
@@ -845,7 +844,7 @@ func TestExtractTargets(t *testing.T) {
 			},
 		}
 
-		targets, err := reconciler.extractTargets(context.Background(), obj)
+		targets, err := reconciler.extractTargets(t.Context(), obj)
 		assert.NoError(t, err)
 		assert.Empty(t, targets)
 	})
@@ -865,7 +864,7 @@ func TestExtractTargets(t *testing.T) {
 			},
 		}
 
-		targets, err := reconciler.extractTargets(context.Background(), obj)
+		targets, err := reconciler.extractTargets(t.Context(), obj)
 		assert.Error(t, err)
 		assert.EqualError(t, err, "cannot create target for workload: invalid reference: invalid format: invalid//annotation")
 		assert.Empty(t, targets)
@@ -917,7 +916,7 @@ func TestTriggerReloads(t *testing.T) {
 
 		reconciler := createBaseReconciler(sts1, sts2)
 
-		successes, failures := reconciler.triggerReloads(context.Background(), workload, []targets.Target{target1, target2})
+		successes, failures := reconciler.triggerReloads(t.Context(), workload, []targets.Target{target1, target2})
 
 		assert.Equal(t, 2, successes, "All reloads should succeed")
 		assert.Equal(t, 0, failures, "No failures should occur")
@@ -948,7 +947,7 @@ func TestTriggerReloads(t *testing.T) {
 
 		reconciler := createBaseReconciler(sts)
 
-		successes, failures := reconciler.triggerReloads(context.Background(), workload, []targets.Target{validTarget, invalidTarget})
+		successes, failures := reconciler.triggerReloads(t.Context(), workload, []targets.Target{validTarget, invalidTarget})
 
 		assert.Equal(t, 1, successes, "One reload should succeed")
 		assert.Equal(t, 1, failures, "One reload should fail")
@@ -980,7 +979,7 @@ func TestTriggerReloads(t *testing.T) {
 
 		reconciler := createBaseReconciler(sts)
 
-		successes, failures := reconciler.triggerReloads(context.Background(), workload, []targets.Target{target1, target2})
+		successes, failures := reconciler.triggerReloads(t.Context(), workload, []targets.Target{target1, target2})
 
 		assert.Equal(t, 0, successes, "No reloads should succeed")
 		assert.Equal(t, 2, failures, "All reloads should fail")
