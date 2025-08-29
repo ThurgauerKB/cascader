@@ -4,6 +4,15 @@ name: Unit Tests
 on:
   workflow_dispatch:
   workflow_call:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "cmd/**"
+      - "internal/**"
+      - go.mod
+      - go.sum
+      - Dockerfile.goreleaser
 
 env:
   KUBERNETES_VERSION: "1.32.0"

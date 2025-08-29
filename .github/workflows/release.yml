@@ -1,5 +1,5 @@
 ---
-name: Build
+name: Test and build a release
 
 on:
   workflow_dispatch:
