@@ -28,7 +28,7 @@ const (
 	daemonSetAnnotation           string = "cascader.tkb.ch/daemonset"
 	deploymentAnnotation          string = "cascader.tkb.ch/deployment"
 	statefulSetAnnotation         string = "cascader.tkb.ch/statefulset"
-	lastObservedRestartAnnotation string = "cascader.tkb.ch/last-observed-restart"
+	LastObservedRestartAnnotation string = "cascader.tkb.ch/last-observed-restart"
 	requeueAfterAnnotation        string = "cascader.tkb.ch/requeue-after"
 )
 
@@ -71,7 +71,7 @@ func ParseArgs(args []string, version string) (Options, error) {
 	tf.StringVar(&options.DaemonSetAnnotation, "daemonset-annotation", daemonSetAnnotation, "Annotation key for monitored DaemonSets").
 		Placeholder("ANNOTATION").
 		Value()
-	tf.StringVar(&options.LastObservedRestartAnnotation, "last-observed-restart-annotation", lastObservedRestartAnnotation, "Annotation key for last observed restart").
+	tf.StringVar(&options.LastObservedRestartAnnotation, "last-observed-restart-annotation", LastObservedRestartAnnotation, "Annotation key for last observed restart").
 		Placeholder("ANNOTATION").
 		Value()
 	tf.StringVar(&options.RequeueAfterAnnotation, "requeue-after-annotation", requeueAfterAnnotation, "Annotation key for requeue interval override").

@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/thurgauerkb/cascader/internal/utils"
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	. "github.com/onsi/ginkgo/v2" // nolint:staticcheck
@@ -147,7 +146,7 @@ var _ = Describe("Deployment workload", Serial, Ordered, func() {
 			ns,
 			obj1Name,
 			testutils.WithAnnotation(deploymentAnnotation, obj2Name),
-			testutils.WithAnnotation(utils.LastObservedRestartKey, time.Now().Format(time.RFC3339)),
+			testutils.WithAnnotation(lastObservedRestartAnnotation, time.Now().Format(time.RFC3339)),
 			testutils.WithStartupProbe(5),
 		)
 		obj1ID := testutils.GenerateID(obj1)

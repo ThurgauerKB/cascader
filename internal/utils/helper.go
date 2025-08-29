@@ -30,8 +30,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const LastObservedRestartKey string = "kubectl.kubernetes.io/last-observed-restart"
-
 // UniqueAnnotations ensures all provided annotation values are unique.
 // Returns an error if the map is empty or if any duplicate values are found.
 func UniqueAnnotations(annotations map[string]string) error {

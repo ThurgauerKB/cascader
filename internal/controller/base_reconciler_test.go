@@ -18,18 +18,18 @@ package controller
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/thurgauerkb/cascader/internal/flag"
 	"github.com/thurgauerkb/cascader/internal/kinds"
 	"github.com/thurgauerkb/cascader/internal/targets"
-	"github.com/thurgauerkb/cascader/internal/utils"
 	"github.com/thurgauerkb/cascader/internal/workloads"
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -99,7 +99,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		reconciler := createBaseReconciler()
 
 		_, err := reconciler.ReconcileWorkload(t.Context(), obj)
-		assert.Error(t, err, "Expected error for invalid workload kind")
+		require.Error(t, err, "Expected error for invalid workload kind")
 		assert.Contains(t, err.Error(), "unsupported workload type: *v1.ReplicaSet", "Expected error message to indicate invalid ReplicaSet")
 	})
 
@@ -222,7 +222,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		reconciler := createBaseReconciler(dep1, targetObj)
 
 		result, err := reconciler.ReconcileWorkload(t.Context(), dep1)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, "failed to create targets: cannot create target for workload: invalid reference: invalid format: invalid/target/annotation")
 		expectedResult := ctrl.Result{}
 		assert.Equal(t, expectedResult, result, "Expected successful result")
@@ -440,7 +440,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							utils.LastObservedRestartKey: now,
+							flag.LastObservedRestartAnnotation: now,
 						},
 					},
 				},
@@ -638,13 +638,6 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 			},
 			Spec: appsv1.DeploymentSpec{
 				Replicas: testutils.Int32Ptr(4),
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{
-							utils.LastObservedRestartKey: now,
-						},
-					},
-				},
 			},
 		}
 
@@ -664,10 +657,11 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		reconciler.KubeClient = fakeClient
 
 		result, err := reconciler.ReconcileWorkload(t.Context(), obj)
-		assert.Error(t, err)
+		require.Error(t, err)
 		expectedResult := ctrl.Result{}
 		assert.Equal(t, expectedResult, result, "Expected successful result")
-		assert.EqualError(t, err, fmt.Sprintf("failed to patch restart annotation: failed to patch annotation \"cascader.tkb.ch/last-observed-restart\"=%q: simulated patch error", now))
+		assert.ErrorContains(t, err, "failed to patch restart annotation: failed to patch annotation \"cascader.tkb.ch/last-observed-restart\"")
+		assert.ErrorContains(t, err, "simulated patch error")
 	})
 }
 
@@ -687,7 +681,7 @@ func TestSetLastObservedRestartAnnotation(t *testing.T) {
 				Name:      "test-deployment",
 				Namespace: "default",
 				Annotations: map[string]string{
-					utils.LastObservedRestartKey: now,
+					flag.LastObservedRestartAnnotation: now,
 				},
 			},
 		}
@@ -725,7 +719,7 @@ func TestClearLastObservedRestartAnnotation(t *testing.T) {
 				Name:      "test-deployment",
 				Namespace: "default",
 				Annotations: map[string]string{
-					utils.LastObservedRestartKey: now,
+					flag.LastObservedRestartAnnotation: now,
 				},
 			},
 		}
@@ -865,7 +859,7 @@ func TestExtractTargets(t *testing.T) {
 		}
 
 		targets, err := reconciler.extractTargets(t.Context(), obj)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, "cannot create target for workload: invalid reference: invalid format: invalid//annotation")
 		assert.Empty(t, targets)
 	})
@@ -1056,7 +1050,7 @@ func TestRequeueDurationFor(t *testing.T) {
 		}
 
 		duration, err := reconciler.requeueDurationFor(obj)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, "invalid annotation: time: invalid duration \"invalid-duration\"")
 		assert.Equal(t, defaultRequeuAfter, duration, "Expected duration to be 2 seconds on parsing error")
 	})

@@ -19,8 +19,8 @@ package predicates
 import (
 	"testing"
 
+	"github.com/thurgauerkb/cascader/internal/flag"
 	"github.com/thurgauerkb/cascader/internal/kinds"
-	"github.com/thurgauerkb/cascader/internal/utils"
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
@@ -215,7 +215,7 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							utils.LastObservedRestartKey: "2025-01-14T12:00:00Z",
+							flag.LastObservedRestartAnnotation: "2025-01-14T12:00:00Z",
 						},
 					},
 				},
@@ -232,7 +232,7 @@ func TestNewPredicate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							utils.LastObservedRestartKey: "2025-01-14T12:30:00Z",
+							flag.LastObservedRestartAnnotation: "2025-01-14T12:30:00Z",
 						},
 					},
 				},

@@ -19,8 +19,8 @@ package targets
 import (
 	"testing"
 
+	"github.com/thurgauerkb/cascader/internal/flag"
 	"github.com/thurgauerkb/cascader/internal/kinds"
-	"github.com/thurgauerkb/cascader/internal/utils"
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
@@ -140,8 +140,8 @@ func TestDeploymentTarget_Reload(t *testing.T) {
 		updatedDeployment := &appsv1.Deployment{}
 		_ = fakeClient.Get(t.Context(), client.ObjectKey{Namespace: "default", Name: "test-deployment"}, updatedDeployment)
 
-		assert.Contains(t, updatedDeployment.Spec.Template.Annotations, utils.LastObservedRestartKey)
-		assert.NotEmpty(t, updatedDeployment.Spec.Template.Annotations[utils.LastObservedRestartKey])
+		assert.Contains(t, updatedDeployment.Spec.Template.Annotations, flag.LastObservedRestartAnnotation)
+		assert.NotEmpty(t, updatedDeployment.Spec.Template.Annotations[flag.LastObservedRestartAnnotation])
 	})
 
 	t.Run("Patch Error", func(t *testing.T) {
