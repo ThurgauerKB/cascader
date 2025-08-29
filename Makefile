@@ -108,7 +108,7 @@ vet: ## Run go vet against code.
 .PHONY: test
 test: fmt vet envtest ## Run unit tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
-	go test -v -coverprofile=cover.out -covermode=atomic -count=1 -parallel=4 -timeout=5m ./internal/...
+	go test -coverprofile=cover.out -covermode=atomic -count=1 -parallel=4 -timeout=5m ./internal/...
 
 
 .PHONY: kind
