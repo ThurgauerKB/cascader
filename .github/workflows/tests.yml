@@ -34,38 +34,19 @@ jobs:
         run: |
           make download
 
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: v${{ env.KUBERNETES_VERSION }}
+      - name: Create kind cluster
+        run: make kind
 
-      - name: Export kubeconfig
+      - name: Export kubeconfig for later steps
         run: |
           mkdir -p "$HOME/.kube"
-          kind get kubeconfig --name cascader-test > "$HOME/.kube/config"
+          "${{ github.workspace }}/bin/kind" get kubeconfig --name cascader-test > "$HOME/.kube/config"
           echo "KUBECONFIG=$HOME/.kube/config" >> "$GITHUB_ENV"
 
-      - name: Show context
+      - name: Sanity check
         run: |
           echo "KUBECONFIG=$KUBECONFIG"
-          kubectl cluster-info
-          kubectl get nodes -o wide
-
-      - name: Set up Kind Cluster
-        run: |
-          make kind
-
-      - name: Export kubeconfig
-        run: |
-          mkdir -p "$HOME/.kube"
-          kind get kubeconfig --name cascader-test > "$HOME/.kube/config"
-          echo "KUBECONFIG=$HOME/.kube/config" >> "$GITHUB_ENV"
-
-      - name: Show context
-        run: |
-          echo "KUBECONFIG=$KUBECONFIG"
-          kubectl cluster-info
-          kubectl get nodes -o wide
+          "${{ github.workspace }}/bin/kind" get clusters
 
       - name: Run Unit Tests
         run: |
