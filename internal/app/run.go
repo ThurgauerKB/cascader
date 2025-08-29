@@ -68,6 +68,19 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 	setupLog := logger.WithName("setup")
 	setupLog.Info("initializing cascader", "version", version)
 
+	// Validate annotation uniqueness
+	configuredAnnotations := map[string]string{
+		"DaemonSet":           flags.DaemonSetAnnotation,
+		"Deployment":          flags.DeploymentAnnotation,
+		"StatefulSet":         flags.StatefulSetAnnotation,
+		"LastObservedRestart": flags.LastObservedRestartAnnotation,
+		"RequeueAfter":        flags.RequeueAfterAnnotation,
+	}
+	if err := utils.UniqueAnnotations(configuredAnnotations); err != nil {
+		return fmt.Errorf("annotation values must be unique: %w", err)
+	}
+	setupLog.Info("configured annotations", "values", utils.FormatAnnotations(configuredAnnotations))
+
 	// Configure HTTP/2 settings
 	tlsOpts := []func(*tls.Config){}
 	if !flags.EnableHTTP2 {
@@ -99,7 +112,11 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 	cacheOpts := utils.ToCacheOptions(flags.WatchNamespaces)
 
 	// Create and initialize the manager
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	cfg, err := ctrl.GetConfig()
+	if err != nil {
+		return fmt.Errorf("unable to get Kubernetes REST config: %w", err)
+	}
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
 		Logger:                 logger,
@@ -119,21 +136,6 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 	} else {
 		setupLog.Info("namespace scope", "mode", "namespaced", "namespaces", flags.WatchNamespaces)
 	}
-
-	// Validate annotation uniqueness
-	configuredAnnotations := map[string]string{
-		"DaemonSet":           flags.DaemonSetAnnotation,
-		"Deployment":          flags.DeploymentAnnotation,
-		"StatefulSet":         flags.StatefulSetAnnotation,
-		"LastObservedRestart": flags.LastObservedRestartAnnotation,
-		"RequeueAfter":        flags.RequeueAfterAnnotation,
-	}
-	if err := utils.UniqueAnnotations(configuredAnnotations); err != nil {
-		return fmt.Errorf("annotation values must be unique: %w", err)
-	}
-
-	// Log configured annotations
-	setupLog.Info("configured annotations", "values", utils.FormatAnnotations(configuredAnnotations))
 
 	// Define resource annotations with their kinds
 	annotationKindMap := kinds.AnnotationKindMap{
