@@ -19,8 +19,8 @@ package targets
 import (
 	"testing"
 
+	"github.com/thurgauerkb/cascader/internal/flag"
 	"github.com/thurgauerkb/cascader/internal/kinds"
-	"github.com/thurgauerkb/cascader/internal/utils"
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
@@ -138,8 +138,8 @@ func TestStatefulSetTarget_Reload(t *testing.T) {
 		updatedStatefulSet := &appsv1.StatefulSet{}
 		_ = fakeClient.Get(t.Context(), client.ObjectKey{Namespace: "default", Name: "test-statefulset"}, updatedStatefulSet)
 
-		assert.Contains(t, updatedStatefulSet.Spec.Template.Annotations, utils.LastObservedRestartKey)
-		assert.NotEmpty(t, updatedStatefulSet.Spec.Template.Annotations[utils.LastObservedRestartKey])
+		assert.Contains(t, updatedStatefulSet.Spec.Template.Annotations, flag.LastObservedRestartAnnotation)
+		assert.NotEmpty(t, updatedStatefulSet.Spec.Template.Annotations[flag.LastObservedRestartAnnotation])
 	})
 
 	t.Run("Patch Error", func(t *testing.T) {

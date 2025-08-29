@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/thurgauerkb/cascader/internal/flag"
 	"github.com/thurgauerkb/cascader/internal/kinds"
 	"github.com/thurgauerkb/cascader/internal/utils"
 
@@ -64,7 +65,7 @@ func (t *DeploymentTarget) Trigger(ctx context.Context) error {
 		t.kubeClient,
 		dep,
 		&dep.Spec.Template,
-		utils.LastObservedRestartKey,
+		flag.LastObservedRestartAnnotation,
 		time.Now().Format(time.RFC3339),
 	); err != nil {
 		return fmt.Errorf("failed to patch Deployment %s/%s: %w", t.namespace, t.name, err)

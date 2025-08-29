@@ -19,8 +19,8 @@ package targets
 import (
 	"testing"
 
+	"github.com/thurgauerkb/cascader/internal/flag"
 	"github.com/thurgauerkb/cascader/internal/kinds"
-	"github.com/thurgauerkb/cascader/internal/utils"
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
@@ -142,8 +142,8 @@ func TestDaemonSetTarget_Reload(t *testing.T) {
 		updatedDaemonSet := &appsv1.DaemonSet{}
 		_ = fakeClient.Get(t.Context(), client.ObjectKey{Namespace: "default", Name: "test-daemonset"}, updatedDaemonSet)
 
-		assert.Contains(t, updatedDaemonSet.Spec.Template.Annotations, utils.LastObservedRestartKey)
-		assert.NotEmpty(t, updatedDaemonSet.Spec.Template.Annotations[utils.LastObservedRestartKey])
+		assert.Contains(t, updatedDaemonSet.Spec.Template.Annotations, flag.LastObservedRestartAnnotation)
+		assert.NotEmpty(t, updatedDaemonSet.Spec.Template.Annotations[flag.LastObservedRestartAnnotation])
 	})
 
 	t.Run("Patch Error", func(t *testing.T) {
