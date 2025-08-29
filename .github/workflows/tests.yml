@@ -4,6 +4,7 @@ name: Unit Tests
 on:
   workflow_dispatch:
   workflow_call:
+  pull_request:
 
 env:
   KUBERNETES_VERSION: "1.32.0"
