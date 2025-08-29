@@ -23,6 +23,7 @@ import (
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -221,7 +222,7 @@ func TestExtractPodTemplate(t *testing.T) {
 		pod := &corev1.Pod{}
 
 		template, err := extractPodTemplate(pod)
-		assert.Error(t, err, "Expected error for unsupported object type")
+		require.Error(t, err, "Expected error for unsupported object type")
 		assert.Contains(t, err.Error(), "unsupported object type", "Expected specific error message for unsupported type")
 		assert.Nil(t, template, "Expected nil template for unsupported type")
 	})

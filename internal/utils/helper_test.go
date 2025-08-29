@@ -17,7 +17,6 @@ limitations under the License.
 package utils
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -25,6 +24,7 @@ import (
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,7 +60,7 @@ func TestUniqueAnnotations(t *testing.T) {
 			"RequeueAfter": "cascader.tkb.ch/requeue-after",
 		}
 		err := UniqueAnnotations(annotations)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.ErrorContains(t, err, "duplicate annotation value \"cascader.tkb.ch/deployment\"")
 	})
 
@@ -69,7 +69,7 @@ func TestUniqueAnnotations(t *testing.T) {
 
 		annotations := map[string]string{}
 		err := UniqueAnnotations(annotations)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, "no annotations provided")
 	})
 
@@ -198,7 +198,7 @@ func TestParseTargetRef(t *testing.T) {
 
 		ns, name, err := ParseTargetRef(target, defaultNamespace)
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Empty(t, ns)
 		assert.Empty(t, name)
 	})
@@ -272,7 +272,7 @@ func TestPatchPodTemplateAnnotation(t *testing.T) {
 	t.Run("Successful Patch", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -309,7 +309,7 @@ func TestPatchPodTemplateAnnotation(t *testing.T) {
 	t.Run("Invalid Object Type", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 		invalid := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod1",
@@ -321,7 +321,7 @@ func TestPatchPodTemplateAnnotation(t *testing.T) {
 
 		err := PatchPodTemplateAnnotation(ctx, cl, invalid, &corev1.PodTemplateSpec{}, lastObservedRestartKey, now)
 
-		assert.Error(t, err, "expected error when patching unsupported object")
+		require.Error(t, err, "expected error when patching unsupported object")
 	})
 }
 
@@ -336,7 +336,7 @@ func TestPatchWorkloadAnnotation(t *testing.T) {
 	t.Run("Successful Patch", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -371,7 +371,7 @@ func TestPatchWorkloadAnnotation(t *testing.T) {
 	t.Run("Invalid Object Type", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 		invalid := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod1",
@@ -383,7 +383,7 @@ func TestPatchWorkloadAnnotation(t *testing.T) {
 
 		err := PatchWorkloadAnnotation(ctx, cl, invalid, lastObservedRestartKey, now)
 
-		assert.Error(t, err, "expected error when patching unsupported object")
+		require.Error(t, err, "expected error when patching unsupported object")
 	})
 }
 
@@ -398,7 +398,7 @@ func TestDeleteWorkloadAnnotation(t *testing.T) {
 	t.Run("Successful Delete", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -436,7 +436,7 @@ func TestDeleteWorkloadAnnotation(t *testing.T) {
 	t.Run("Successful Delete (no annotation)", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -472,7 +472,7 @@ func TestDeleteWorkloadAnnotation(t *testing.T) {
 	t.Run("Keeps unrelated annotations", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -514,7 +514,7 @@ func TestDeleteWorkloadAnnotation(t *testing.T) {
 	t.Run("Patch failure", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		dep := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -545,7 +545,7 @@ func TestDeleteWorkloadAnnotation(t *testing.T) {
 		}
 
 		err := DeleteWorkloadAnnotation(ctx, mockClient, dep, lastObservedRestartKey)
-		assert.Error(t, err, "expected error when patch fails")
+		require.Error(t, err, "expected error when patch fails")
 		assert.Contains(t, err.Error(), "failed to delete annotation", "error should include context")
 		assert.Contains(t, err.Error(), lastObservedRestartKey, "error should mention the last-observed-restart")
 	})

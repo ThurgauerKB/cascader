@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRun(t *testing.T) {
@@ -31,7 +32,7 @@ func TestRun(t *testing.T) {
 	t.Run("Smoke", func(t *testing.T) {
 		t.Parallel()
 
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 
 		args := []string{
@@ -63,20 +64,20 @@ func TestRun(t *testing.T) {
 	t.Run("Invalid args", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 		args := []string{"--invalid-flag"}
 		out := &bytes.Buffer{}
 
 		err := Run(ctx, "v0.0.0", args, out)
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, "error parsing arguments: unknown flag: --invalid-flag")
 	})
 
 	t.Run("Request Help", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 		args := []string{"--version"}
 		out := &bytes.Buffer{}
 
@@ -89,18 +90,18 @@ func TestRun(t *testing.T) {
 	t.Run("Logger error", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 		args := []string{"--log-encoder", "invalid"}
 		out := &bytes.Buffer{}
 
 		err := Run(ctx, "v0.0.0", args, out)
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, "error parsing arguments: invalid value for flag --log-encoder: must be one of: json, console.")
 	})
 
 	t.Run("Leader Election", func(t *testing.T) {
-		ctx := context.Background()
+		ctx := t.Context()
 		args := []string{
 			"--health-probe-bind-address", ":8082",
 		}
@@ -108,14 +109,14 @@ func TestRun(t *testing.T) {
 
 		err := Run(ctx, "v0.0.0", args, out)
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, "unable to create manager: unable to find leader election namespace: not running in-cluster, please specify LeaderElectionNamespace")
 	})
 
 	t.Run("Not unique Annotations", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 		args := []string{
 			"--health-probe-bind-address", ":8085",
 			"--leader-elect=false",
@@ -128,7 +129,7 @@ func TestRun(t *testing.T) {
 
 		err := Run(ctx, "v0.0.0", args, out)
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.ErrorContains(t, err, "annotation values must be unique: duplicate annotation")
 	})
 }

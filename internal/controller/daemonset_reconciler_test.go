@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"context"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -75,7 +74,7 @@ func TestDaemonSetReconciler_Reconcile(t *testing.T) {
 			Name:      "nonexistent-daemonset",
 		}}
 
-		result, err := reconciler.Reconcile(context.Background(), req)
+		result, err := reconciler.Reconcile(t.Context(), req)
 		assert.NoError(t, err, "Expected no error when DaemonSet is not found")
 		assert.Equal(t, ctrl.Result{}, result, "Expected empty result when DaemonSet is not found")
 	})
@@ -100,7 +99,7 @@ func TestDaemonSetReconciler_Reconcile(t *testing.T) {
 			Name:      "error-daemonset",
 		}}
 
-		result, err := reconciler.Reconcile(context.Background(), req)
+		result, err := reconciler.Reconcile(t.Context(), req)
 		assert.Error(t, err, "Expected error when Get fails")
 		assert.Contains(t, err.Error(), "failed to fetch DaemonSet")
 		assert.Equal(t, ctrl.Result{}, result, "Expected empty result when Get fails")
@@ -135,7 +134,7 @@ func TestDaemonSetReconciler_Reconcile(t *testing.T) {
 			Name:      "test-daemonset",
 		}}
 
-		result, err := reconciler.Reconcile(context.Background(), req)
+		result, err := reconciler.Reconcile(t.Context(), req)
 		assert.NoError(t, err, "Expected no error on successful reconciliation")
 		assert.Equal(t, ctrl.Result{}, result, "Expected successful result")
 	})

@@ -17,7 +17,6 @@ limitations under the License.
 package targets
 
 import (
-	"context"
 	"testing"
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
@@ -25,6 +24,7 @@ import (
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -112,9 +112,9 @@ func TestStatefulSetTarget_Reload(t *testing.T) {
 			mockClient,
 		)
 
-		err := target.Trigger(context.TODO())
+		err := target.Trigger(t.Context())
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "simulated get error")
 	})
 
@@ -132,11 +132,11 @@ func TestStatefulSetTarget_Reload(t *testing.T) {
 			fakeClient,
 		)
 
-		err := target.Trigger(context.TODO())
+		err := target.Trigger(t.Context())
 		assert.NoError(t, err)
 
 		updatedStatefulSet := &appsv1.StatefulSet{}
-		_ = fakeClient.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "test-statefulset"}, updatedStatefulSet)
+		_ = fakeClient.Get(t.Context(), client.ObjectKey{Namespace: "default", Name: "test-statefulset"}, updatedStatefulSet)
 
 		assert.Contains(t, updatedStatefulSet.Spec.Template.Annotations, utils.LastObservedRestartKey)
 		assert.NotEmpty(t, updatedStatefulSet.Spec.Template.Annotations[utils.LastObservedRestartKey])
@@ -164,9 +164,9 @@ func TestStatefulSetTarget_Reload(t *testing.T) {
 			mockClient,
 		)
 
-		err := target.Trigger(context.TODO())
+		err := target.Trigger(t.Context())
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "simulated patch error")
 	})
 }

@@ -1,9 +1,9 @@
 ---
-name: Run Unit and E2E Tests
+name: Unit Tests
 
 on:
-  workflow_call:
   workflow_dispatch:
+  workflow_call:
 
 env:
   KUBERNETES_VERSION: "1.32.0"
@@ -26,7 +26,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: "go.mod"
+          go-version-file: go.mod
           check-latest: true
           cache: true
 
@@ -34,9 +34,19 @@ jobs:
         run: |
           make download
 
-      - name: Set up Kind Cluster
+      - name: Create kind cluster
+        run: make kind
+
+      - name: Export kubeconfig for later steps
         run: |
-          make kind
+          mkdir -p "$HOME/.kube"
+          "${{ github.workspace }}/bin/kind" get kubeconfig --name cascader-test > "$HOME/.kube/config"
+          echo "KUBECONFIG=$HOME/.kube/config" >> "$GITHUB_ENV"
+
+      - name: Sanity check
+        run: |
+          echo "KUBECONFIG=$KUBECONFIG"
+          "${{ github.workspace }}/bin/kind" get clusters
 
       - name: Run Unit Tests
         run: |

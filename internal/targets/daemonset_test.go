@@ -17,7 +17,6 @@ limitations under the License.
 package targets
 
 import (
-	"context"
 	"testing"
 
 	"github.com/thurgauerkb/cascader/internal/kinds"
@@ -25,6 +24,7 @@ import (
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -116,9 +116,9 @@ func TestDaemonSetTarget_Reload(t *testing.T) {
 			mockClient,
 		)
 
-		err := target.Trigger(context.TODO())
+		err := target.Trigger(t.Context())
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "simulated get error")
 	})
 
@@ -136,11 +136,11 @@ func TestDaemonSetTarget_Reload(t *testing.T) {
 			fakeClient,
 		)
 
-		err := target.Trigger(context.TODO())
+		err := target.Trigger(t.Context())
 		assert.NoError(t, err)
 
 		updatedDaemonSet := &appsv1.DaemonSet{}
-		_ = fakeClient.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "test-daemonset"}, updatedDaemonSet)
+		_ = fakeClient.Get(t.Context(), client.ObjectKey{Namespace: "default", Name: "test-daemonset"}, updatedDaemonSet)
 
 		assert.Contains(t, updatedDaemonSet.Spec.Template.Annotations, utils.LastObservedRestartKey)
 		assert.NotEmpty(t, updatedDaemonSet.Spec.Template.Annotations[utils.LastObservedRestartKey])
@@ -165,9 +165,9 @@ func TestDaemonSetTarget_Reload(t *testing.T) {
 			mockClient,
 		)
 
-		err := target.Trigger(context.TODO())
+		err := target.Trigger(t.Context())
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "simulated patch error")
 	})
 }

@@ -25,6 +25,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	uzap "go.uber.org/zap"
 	zapcore "go.uber.org/zap/zapcore"
 )
@@ -73,7 +74,7 @@ func TestInitLogging(t *testing.T) {
 		var buf bytes.Buffer
 
 		logger, err := InitLogging(opts, &buf)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, `invalid log encoder: "invalid-encoder"`)
 		assert.Equal(t, logr.Logger{}, logger)
 	})
@@ -89,7 +90,7 @@ func TestInitLogging(t *testing.T) {
 		var buf bytes.Buffer
 
 		logger, err := InitLogging(opts, &buf)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, `invalid stacktrace level: "invalid-level"`)
 		assert.Equal(t, logr.Logger{}, logger)
 	})
@@ -121,7 +122,7 @@ func TestSetupLogger(t *testing.T) {
 		}
 		var buf bytes.Buffer
 		_, err := setupLogger(opts, &buf)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, "invalid log encoder: \"invalid\"")
 	})
 
@@ -135,7 +136,7 @@ func TestSetupLogger(t *testing.T) {
 		}
 		var buf bytes.Buffer
 		_, err := setupLogger(opts, &buf)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, "invalid stacktrace level: \"invalid\"")
 	})
 }
@@ -185,7 +186,7 @@ func TestEncoder(t *testing.T) {
 		e := "invalid"
 		enc, err := encoder(e)
 		assert.Nil(t, enc)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, "invalid log encoder: \"invalid\"")
 	})
 }
@@ -225,7 +226,7 @@ func TestStacktraceLevel(t *testing.T) {
 		level := "invalid"
 		result, err := stacktraceLevel(level)
 		assert.Equal(t, uzap.AtomicLevel{}, result)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, `invalid stacktrace level: "invalid"`)
 	})
 }

@@ -32,7 +32,7 @@ func TestHelpRequested(t *testing.T) {
 		t.Parallel()
 
 		_, err := ParseArgs([]string{"--version"}, "1.2.3")
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.True(t, tinyflags.IsVersionRequested(err))
 		assert.EqualError(t, err, "1.2.3")
 	})
@@ -41,7 +41,7 @@ func TestHelpRequested(t *testing.T) {
 		t.Parallel()
 
 		_, err := ParseArgs([]string{"--help"}, "0.0.0")
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.True(t, tinyflags.IsHelpRequested(err))
 		usage := `Usage: Cascader [flags]
 Flags:
@@ -144,7 +144,7 @@ func TestParseArgs(t *testing.T) {
 		args := []string{"--invalid-flag"}
 		_, err := ParseArgs(args, "0.0.0")
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, "unknown flag: --invalid-flag")
 	})
 
@@ -154,7 +154,7 @@ func TestParseArgs(t *testing.T) {
 		args := []string{"--help"}
 		_, err := ParseArgs(args, "0.0.0")
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.True(t, tinyflags.IsHelpRequested(err))
 	})
 
@@ -164,7 +164,7 @@ func TestParseArgs(t *testing.T) {
 		args := []string{"--version"}
 		_, err := ParseArgs(args, "0.0.0")
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.True(t, tinyflags.IsVersionRequested(err))
 	})
 
@@ -252,7 +252,7 @@ func TestParseArgs(t *testing.T) {
 
 		args := []string{"--metrics-bind-address", ":invalid"}
 		_, err := ParseArgs(args, "0.0.0")
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, "invalid value for flag --metrics-bind-address: invalid TCP address \":invalid\": lookup tcp/invalid: unknown port.")
 	})
 
@@ -261,7 +261,7 @@ func TestParseArgs(t *testing.T) {
 
 		args := []string{"--health-probe-bind-address", ":invalid"}
 		_, err := ParseArgs(args, "0.0.0")
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.EqualError(t, err, "invalid value for flag --health-probe-bind-address: invalid TCP address \":invalid\": lookup tcp/invalid: unknown port.")
 	})
 }
