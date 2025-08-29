@@ -146,7 +146,6 @@ var _ = Describe("Deployment workload", Serial, Ordered, func() {
 			ns,
 			obj1Name,
 			testutils.WithAnnotation(deploymentAnnotation, obj2Name),
-			testutils.WithAnnotation(lastObservedRestartAnnotation, time.Now().Format(time.RFC3339)),
 			testutils.WithStartupProbe(5),
 		)
 		obj1ID := testutils.GenerateID(obj1)
