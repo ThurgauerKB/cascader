@@ -37,7 +37,7 @@ ENVTEST_VERSION ?= release-0.18
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_LINT_VERSION ?= v2.5.0
 # renovate: datasource=github-releases depName=google/yamlfmt
-YAMLFMT_VERSION ?= v0.19.0
+YAMLFMT_VERSION ?= v0.20.0
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind
 KIND_VERSION ?= 0.30.0
 # renovate: datasource=github-releases depName=onsi/ginkgo
