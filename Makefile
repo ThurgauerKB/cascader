@@ -61,17 +61,17 @@ VERSION = $(shell [ -n "$(LATEST_TAG)" ] && echo $(LATEST_TAG) | sed "s/^$(VERSI
 
 patch: ## Create a new patch release (x.y.Z+1)
 	@NEW_VERSION=$$(echo "$(VERSION)" | awk -F. '{printf "%d.%d.%d", $$1, $$2, $$3+1}') && \
-	$(MAKE) update-version VERSION=$${NEW_VERSION} && \
+	git tag "$(VERSION_PREFIX)$${NEW_VERSION}" && \
 	echo "Tagged $(VERSION_PREFIX)$${NEW_VERSION}"
 
 minor: ## Create a new minor release (x.Y+1.0)
 	@NEW_VERSION=$$(echo "$(VERSION)" | awk -F. '{printf "%d.%d.0", $$1, $$2+1}') && \
-	$(MAKE) update-version VERSION=$${NEW_VERSION} && \
+	git tag "$(VERSION_PREFIX)$${NEW_VERSION}" && \
 	echo "Tagged $(VERSION_PREFIX)$${NEW_VERSION}"
 
 major: ## Create a new major release (X+1.0.0)
 	@NEW_VERSION=$$(echo "$(VERSION)" | awk -F. '{printf "%d.0.0", $$1+1}') && \
-	$(MAKE) update-version VERSION=$${NEW_VERSION} && \
+	git tag "$(VERSION_PREFIX)$${NEW_VERSION}" && \
 	echo "Tagged $(VERSION_PREFIX)$${NEW_VERSION}"
 
 tag: ## Show latest tag
@@ -79,11 +79,6 @@ tag: ## Show latest tag
 
 push: ## Push tags to remote
 	git push --tags
-
-.PHONY: update-version
-update-version: ## Update deployment manifests with the new version.
-	@find deploy/kubernetes -type f -name '*.yaml' -exec $(SED) -i -E "s/(image:\s*.*cascader:).*/\1v$(VERSION)/" {} \;
-	@$(SED) -i -E "s/(appVersion\:)\s.*/\1 v$(VERSION)/" deploy/kubernetes/chart/cascader/Chart.yaml
 
 ##@ Development
 
