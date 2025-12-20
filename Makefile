@@ -39,7 +39,7 @@ GOLANGCI_LINT_VERSION ?= v2.7.2
 # renovate: datasource=github-releases depName=google/yamlfmt
 YAMLFMT_VERSION ?= v0.20.0
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind
-KIND_VERSION ?= 0.30.0
+KIND_VERSION ?= 0.31.0
 # renovate: datasource=github-releases depName=onsi/ginkgo
 GINKGO_VERSION ?= v2.27.3
 
