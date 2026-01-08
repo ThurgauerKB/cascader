@@ -41,7 +41,7 @@ YAMLFMT_VERSION ?= v0.21.0
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind
 KIND_VERSION ?= 0.31.0
 # renovate: datasource=github-releases depName=onsi/ginkgo
-GINKGO_VERSION ?= v2.27.3
+GINKGO_VERSION ?= v2.27.4
 
 .PHONY: all
 all: build
