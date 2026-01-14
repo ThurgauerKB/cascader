@@ -21,6 +21,7 @@ import (
 	"errors"
 
 	"github.com/thurgauerkb/cascader/internal/predicates"
+	"github.com/thurgauerkb/cascader/internal/workloads"
 
 	appsv1 "k8s.io/api/apps/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -28,13 +29,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+var DeploymentGVK = appsv1.SchemeGroupVersion.WithKind("Deployment")
+
 // DeploymentReconciler reconciles Deployments to detect restarts and target reloads.
 type DeploymentReconciler struct {
 	BaseReconciler
 }
-
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;patch
-// +kubebuilder:rbac:groups="",resources=events,verbs=create
 
 // Reconcile handles the reconciliation logic when a Deployment is updated.
 func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -50,7 +50,7 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, errors.New("failed to fetch Deployment")
 	}
 
-	return r.ReconcileWorkload(ctx, dep)
+	return r.ReconcileWorkload(ctx, &workloads.DeploymentWorkload{Deployment: dep})
 }
 
 // SetupWithManager sets up the controller with the Manager.

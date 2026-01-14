@@ -41,6 +41,7 @@ type BaseReconciler struct {
 	KubeClient                    client.Client           // KubeClient is the Kubernetes API client.
 	Logger                        *logr.Logger            // Logger is used for logging reconciliation events.
 	Recorder                      record.EventRecorder    // Recorder records Kubernetes events.
+	Metrics                       *metrics.Registry       // Metrics is used for recording metrics.
 	AnnotationKindMap             kinds.AnnotationKindMap // AnnotationKindMap maps annotation keys to workload kinds.
 	LastObservedRestartAnnotation string                  // LastObservedRestartAnnotation is the annotation key for last observed restarts.
 	RequeueAfterAnnotation        string                  // RequeueAfterAnnotation is the annotation key for requeue intervals.
@@ -48,14 +49,8 @@ type BaseReconciler struct {
 }
 
 // ReconcileWorkload handles the core reconciliation logic for any workload type.
-func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Object) (ctrl.Result, error) {
-	ns, name := obj.GetNamespace(), obj.GetName()
-
-	// Initialize a workload instance from the given Kubernetes object.
-	workload, err := workloads.NewWorkload(obj)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to create workload for %s/%s: %w", ns, name, err)
-	}
+func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, workload workloads.Workload) (ctrl.Result, error) {
+	ns, name := workload.GetNamespace(), workload.GetName()
 
 	res := workload.Resource()
 	id := workload.ID()
@@ -80,7 +75,7 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 		return ctrl.Result{}, fmt.Errorf("failed to create targets: %w", err)
 	}
 	// Set the number of targets as a metric, even if no targets are found.
-	metrics.WorkloadTargets.WithLabelValues(ns, name, kind).Set(float64(len(targets)))
+	b.Metrics.SetWorkloadTargets(ns, name, kind, float64(len(targets)))
 
 	if len(targets) == 0 {
 		log.Info("No targets found; skipping reload.")
@@ -100,14 +95,14 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, obj client.Objec
 	// Check for and handle circular dependencies among workloads to prevent infinite reload loops.
 	if err := b.checkCycle(ctx, id, targets); err != nil {
 		if cycleErr, ok := err.(*CycleError); ok {
-			metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(metrics.CycleDetected)
+			b.Metrics.SetDependencyCycleDetected(ns, name, kind, metrics.CycleDetected)
 			b.Recorder.Eventf(res, corev1.EventTypeWarning, "CycleDetected", "Dependency cycle detected: %s", cycleErr.Path)
 		}
 		log.Error(err, "Dependency cycle detected; skipping reload")
 		return ctrl.Result{}, nil // Do not return an error to avoid requeuing the workload.
 	}
 	// Reset dependency cycle metric to indicate no cycle was detected.
-	metrics.DependencyCyclesDetected.WithLabelValues(ns, name, kind).Set(metrics.CycleNone)
+	b.Metrics.SetDependencyCycleDetected(ns, name, kind, metrics.CycleNone)
 
 	// Check if the workload is in a stable state before triggering reloads.
 	stable, reason := workload.Stable()
@@ -241,7 +236,7 @@ func (b *BaseReconciler) triggerReloads(ctx context.Context, workload workloads.
 			continue
 		}
 
-		metrics.RestartsPerformed.WithLabelValues(kind, t.Namespace(), t.Name()).Inc()
+		b.Metrics.IncRestartsPerformed(t.Namespace(), t.Name(), kind)
 		log.Info("Successfully triggered reload", "targetID", targetID)
 		b.Recorder.Eventf(
 			res,

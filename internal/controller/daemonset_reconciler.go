@@ -21,6 +21,7 @@ import (
 	"errors"
 
 	"github.com/thurgauerkb/cascader/internal/predicates"
+	"github.com/thurgauerkb/cascader/internal/workloads"
 
 	appsv1 "k8s.io/api/apps/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -50,7 +51,7 @@ func (r *DaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, errors.New("failed to fetch DaemonSet")
 	}
 
-	return r.ReconcileWorkload(ctx, ds)
+	return r.ReconcileWorkload(ctx, &workloads.DaemonSetWorkload{DaemonSet: ds})
 }
 
 // SetupWithManager sets up the controller with the Manager.

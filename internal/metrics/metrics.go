@@ -16,19 +16,31 @@ limitations under the License.
 
 package metrics
 
-import (
-	"github.com/prometheus/client_golang/prometheus"
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
-)
+import "github.com/prometheus/client_golang/prometheus"
+
+type CycleState float64
 
 const (
-	CycleNone = iota
+	CycleNone CycleState = iota
 	CycleDetected
 )
 
-var (
-	// DependencyCyclesDetected reports whether a dependency cycle was detected for a specific workload.
-	DependencyCyclesDetected = prometheus.NewGaugeVec(
+// Registry provides a typed façade for recording AutoVPA Prometheus metrics.
+type Registry struct {
+	reg                      prometheus.Registerer
+	dependencyCyclesDetected *prometheus.GaugeVec
+	workingTargets           *prometheus.GaugeVec
+	restartsPerformed        *prometheus.CounterVec
+}
+
+// NewRegistry creates and registers all AutoVPA metrics with the provided
+// Prometheus registerer, allowing the metrics server to expose them automatically.
+func NewRegistry(reg prometheus.Registerer) *Registry {
+	if reg == nil {
+		reg = prometheus.DefaultRegisterer
+	}
+
+	dependencyCyclesDetected := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "cascader_dependency_cycles_detected",
 			Help: "Indicates whether a dependency cycle is currently detected for a specific workload (1 = cycle detected, 0 = no cycle).",
@@ -36,8 +48,7 @@ var (
 		[]string{"namespace", "name", "resource_kind"},
 	)
 
-	// WorkloadTargets exposes the number of referenced workloads for each annotated workload managed by Cascader.
-	WorkloadTargets = prometheus.NewGaugeVec(
+	workloadTargets := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "cascader_workload_targets",
 			Help: "Number of dependency targets extracted from a workload's annotations by Cascader.",
@@ -45,20 +56,33 @@ var (
 		[]string{"namespace", "name", "resource_kind"},
 	)
 
-	// RestartsPerformed tracks the total number of restarts performed by the controller.
-	RestartsPerformed = prometheus.NewCounterVec(
+	restartsPerformed := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "cascader_restarts_performed_total",
 			Help: "Total number of restarts performed by Cascader.",
 		},
 		[]string{"namespace", "name", "resource_kind"},
 	)
-)
 
-func init() {
-	metrics.Registry.MustRegister(
-		DependencyCyclesDetected,
-		WorkloadTargets,
-		RestartsPerformed,
-	)
+	reg.MustRegister(dependencyCyclesDetected, workloadTargets, restartsPerformed)
+
+	return &Registry{
+		reg:                      reg,
+		dependencyCyclesDetected: dependencyCyclesDetected,
+		workingTargets:           workloadTargets,
+		restartsPerformed:        restartsPerformed,
+	}
+}
+
+// SetDependencyCycleDetected sets the dependency cycle detected metric for the given workload.
+func (r *Registry) SetDependencyCycleDetected(namespace, name, kind string, state CycleState) {
+	r.dependencyCyclesDetected.WithLabelValues(namespace, name, kind).Set(float64(state))
+}
+
+func (r *Registry) SetWorkloadTargets(namespace, name, kind string, value float64) {
+	r.workingTargets.WithLabelValues(namespace, name, kind).Set(value)
+}
+
+func (r *Registry) IncRestartsPerformed(namespace, name, kind string) {
+	r.restartsPerformed.WithLabelValues(namespace, name, kind).Inc()
 }

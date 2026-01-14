@@ -19,7 +19,9 @@ package controller
 import (
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thurgauerkb/cascader/internal/kinds"
+	internalmetrics "github.com/thurgauerkb/cascader/internal/metrics"
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/go-logr/logr"
@@ -62,9 +64,14 @@ func TestStatefulSetReconciler_Reconcile(t *testing.T) {
 		t.Parallel()
 
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+
+		promReg := prometheus.NewRegistry()
+		metricsReg := internalmetrics.NewRegistry(promReg)
+
 		reconciler := &StatefulSetReconciler{
 			BaseReconciler: BaseReconciler{
 				KubeClient: fakeClient,
+				Metrics:    metricsReg,
 			},
 		}
 
@@ -87,9 +94,13 @@ func TestStatefulSetReconciler_Reconcile(t *testing.T) {
 			GetErrorFor: testutils.NamedError{Name: "error-statefulset", Namespace: "test-namespace"},
 		}
 
+		promReg := prometheus.NewRegistry()
+		metricsReg := internalmetrics.NewRegistry(promReg)
+
 		reconciler := &StatefulSetReconciler{
 			BaseReconciler: BaseReconciler{
 				KubeClient: fakeClient,
+				Metrics:    metricsReg,
 			},
 		}
 
@@ -120,10 +131,14 @@ func TestStatefulSetReconciler_Reconcile(t *testing.T) {
 
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(statefulset).Build()
 
+		promReg := prometheus.NewRegistry()
+		metricsReg := internalmetrics.NewRegistry(promReg)
+
 		reconciler := &StatefulSetReconciler{
 			BaseReconciler: BaseReconciler{
 				Logger:     &logr.Logger{},
 				KubeClient: fakeClient,
+				Metrics:    metricsReg,
 			},
 		}
 
