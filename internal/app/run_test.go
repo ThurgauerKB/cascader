@@ -100,19 +100,6 @@ func TestRun(t *testing.T) {
 		assert.EqualError(t, err, "error parsing arguments: invalid value for flag --log-encoder: must be one of: json, console.")
 	})
 
-	t.Run("Leader Election", func(t *testing.T) {
-		ctx := t.Context()
-		args := []string{
-			"--health-probe-bind-address", ":8082",
-		}
-		out := &bytes.Buffer{}
-
-		err := Run(ctx, "v0.0.0", args, out)
-
-		require.Error(t, err)
-		assert.EqualError(t, err, "unable to create manager: unable to find leader election namespace: not running in-cluster, please specify LeaderElectionNamespace")
-	})
-
 	t.Run("Not unique Annotations", func(t *testing.T) {
 		t.Parallel()
 

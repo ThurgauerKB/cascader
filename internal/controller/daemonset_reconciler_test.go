@@ -20,7 +20,9 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thurgauerkb/cascader/internal/kinds"
+	internalmetrics "github.com/thurgauerkb/cascader/internal/metrics"
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/stretchr/testify/assert"
@@ -39,9 +41,13 @@ func TestDaemonSetReconciler_SetupWithManager(t *testing.T) {
 	mgr, err := manager.New(ctrl.GetConfigOrDie(), manager.Options{})
 	assert.NoError(t, err, "Failed to create manager")
 
+	promReg := prometheus.NewRegistry()
+	metricsReg := internalmetrics.NewRegistry(promReg)
+
 	reconciler := &DaemonSetReconciler{
 		BaseReconciler: BaseReconciler{
 			KubeClient: fake.NewClientBuilder().WithScheme(mgr.GetScheme()).Build(),
+			Metrics:    metricsReg,
 			AnnotationKindMap: kinds.AnnotationKindMap{
 				"cascader.tkb.ch/daemonset": kinds.DaemonSetKind,
 			},
@@ -61,11 +67,15 @@ func TestDaemonSetReconciler_Reconcile(t *testing.T) {
 	t.Run("DaemonSet not found", func(t *testing.T) {
 		t.Parallel()
 
-		// Fake client with no resources
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+
+		promReg := prometheus.NewRegistry()
+		metricsReg := internalmetrics.NewRegistry(promReg)
+
 		reconciler := &DaemonSetReconciler{
 			BaseReconciler: BaseReconciler{
 				KubeClient: fakeClient,
+				Metrics:    metricsReg,
 			},
 		}
 
@@ -88,9 +98,13 @@ func TestDaemonSetReconciler_Reconcile(t *testing.T) {
 			GetErrorFor: testutils.NamedError{Name: "error-daemonset", Namespace: "test-namespace"},
 		}
 
+		promReg := prometheus.NewRegistry()
+		metricsReg := internalmetrics.NewRegistry(promReg)
+
 		reconciler := &DaemonSetReconciler{
 			BaseReconciler: BaseReconciler{
 				KubeClient: fakeClient,
+				Metrics:    metricsReg,
 			},
 		}
 
@@ -122,10 +136,14 @@ func TestDaemonSetReconciler_Reconcile(t *testing.T) {
 
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(daemonset).Build()
 
+		promReg := prometheus.NewRegistry()
+		metricsReg := internalmetrics.NewRegistry(promReg)
+
 		reconciler := &DaemonSetReconciler{
 			BaseReconciler: BaseReconciler{
 				Logger:     &logr.Logger{},
 				KubeClient: fakeClient,
+				Metrics:    metricsReg,
 			},
 		}
 

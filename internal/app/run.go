@@ -28,6 +28,7 @@ import (
 	"github.com/thurgauerkb/cascader/internal/flag"
 	"github.com/thurgauerkb/cascader/internal/kinds"
 	"github.com/thurgauerkb/cascader/internal/logging"
+	internalmetrics "github.com/thurgauerkb/cascader/internal/metrics"
 	"github.com/thurgauerkb/cascader/internal/utils"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,6 +36,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	crmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -96,7 +98,11 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 	})
 
 	// Configure metrics server
-	metricsServerOptions := metricsserver.Options{BindAddress: "0"} // disable listener by default
+	metricsReg := internalmetrics.NewRegistry(crmetrics.Registry)
+
+	metricsServerOptions := metricsserver.Options{
+		BindAddress: "0", // disable listener by default
+	}
 	if flags.EnableMetrics {
 		metricsServerOptions = metricsserver.Options{
 			BindAddress:   flags.MetricsAddr,
@@ -150,6 +156,7 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 			Logger:                        &logger,
 			KubeClient:                    mgr.GetClient(),
 			Recorder:                      mgr.GetEventRecorderFor("deployment-controller"),
+			Metrics:                       metricsReg,
 			AnnotationKindMap:             annotationKindMap,
 			LastObservedRestartAnnotation: flags.LastObservedRestartAnnotation,
 			RequeueAfterAnnotation:        flags.RequeueAfterAnnotation,
@@ -165,6 +172,7 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 			Logger:                        &logger,
 			KubeClient:                    mgr.GetClient(),
 			Recorder:                      mgr.GetEventRecorderFor("statefulset-controller"),
+			Metrics:                       metricsReg,
 			AnnotationKindMap:             annotationKindMap,
 			LastObservedRestartAnnotation: flags.LastObservedRestartAnnotation,
 			RequeueAfterAnnotation:        flags.RequeueAfterAnnotation,
@@ -180,6 +188,7 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 			Logger:                        &logger,
 			KubeClient:                    mgr.GetClient(),
 			Recorder:                      mgr.GetEventRecorderFor("daemonset-controller"),
+			Metrics:                       metricsReg,
 			AnnotationKindMap:             annotationKindMap,
 			LastObservedRestartAnnotation: flags.LastObservedRestartAnnotation,
 			RequeueAfterAnnotation:        flags.RequeueAfterAnnotation,

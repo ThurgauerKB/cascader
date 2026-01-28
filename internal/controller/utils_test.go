@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/thurgauerkb/cascader/internal/targets"
-	"github.com/thurgauerkb/cascader/internal/workloads"
 
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,10 +68,7 @@ func TestHasAnnotation(t *testing.T) {
 			},
 		}
 
-		workload, err := workloads.NewWorkload(mockResource)
-		assert.NoError(t, err)
-
-		assert.True(t, hasAnnotation(workload.Resource(), "example.com/annotation"))
+		assert.True(t, hasAnnotation(mockResource, "example.com/annotation"))
 	})
 
 	t.Run("Annotation does not exist", func(t *testing.T) {
@@ -86,10 +82,7 @@ func TestHasAnnotation(t *testing.T) {
 			},
 		}
 
-		workload, err := workloads.NewWorkload(mockResource)
-		assert.NoError(t, err)
-
-		assert.False(t, hasAnnotation(workload.Resource(), "example.com/annotation"))
+		assert.False(t, hasAnnotation(mockResource, "example.com/annotation"))
 	})
 
 	t.Run("No annotations present", func(t *testing.T) {
@@ -101,9 +94,6 @@ func TestHasAnnotation(t *testing.T) {
 			},
 		}
 
-		workload, err := workloads.NewWorkload(mockResource)
-		assert.NoError(t, err)
-
-		assert.False(t, hasAnnotation(workload.Resource(), "example.com/annotation"))
+		assert.False(t, hasAnnotation(mockResource, "example.com/annotation"))
 	})
 }

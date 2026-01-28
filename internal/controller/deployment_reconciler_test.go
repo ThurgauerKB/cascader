@@ -19,7 +19,9 @@ package controller
 import (
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thurgauerkb/cascader/internal/kinds"
+	internalmetrics "github.com/thurgauerkb/cascader/internal/metrics"
 	"github.com/thurgauerkb/cascader/test/testutils"
 
 	"github.com/go-logr/logr"
@@ -61,11 +63,15 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 	t.Run("Deployment not found", func(t *testing.T) {
 		t.Parallel()
 
-		// Fake client with no resources
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+
+		promReg := prometheus.NewRegistry()
+		metricsReg := internalmetrics.NewRegistry(promReg)
+
 		reconciler := &DeploymentReconciler{
 			BaseReconciler: BaseReconciler{
 				KubeClient: fakeClient,
+				Metrics:    metricsReg,
 			},
 		}
 
@@ -87,11 +93,14 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 			Client:      fakeBaseClient,
 			GetErrorFor: testutils.NamedError{Name: "error-deployment", Namespace: "test-namespace"},
 		}
+		promReg := prometheus.NewRegistry()
+		metricsReg := internalmetrics.NewRegistry(promReg)
 
 		reconciler := &DeploymentReconciler{
 			BaseReconciler: BaseReconciler{
 				Logger:     &logr.Logger{},
 				KubeClient: fakeClient,
+				Metrics:    metricsReg,
 			},
 		}
 
@@ -123,10 +132,14 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(deployment).Build()
 
+		promReg := prometheus.NewRegistry()
+		metricsReg := internalmetrics.NewRegistry(promReg)
+
 		reconciler := &DeploymentReconciler{
 			BaseReconciler: BaseReconciler{
 				Logger:     &logr.Logger{},
 				KubeClient: fakeClient,
+				Metrics:    metricsReg,
 			},
 		}
 

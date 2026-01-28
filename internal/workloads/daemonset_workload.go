@@ -32,6 +32,8 @@ type DaemonSetWorkload struct {
 	DaemonSet *appsv1.DaemonSet
 }
 
+func (w *DaemonSetWorkload) GetName() string         { return w.DaemonSet.GetName() }
+func (w *DaemonSetWorkload) GetNamespace() string    { return w.DaemonSet.GetNamespace() }
 func (w *DaemonSetWorkload) Resource() client.Object { return w.DaemonSet }
 func (w *DaemonSetWorkload) Kind() kinds.Kind        { return kinds.DaemonSetKind }
 func (w *DaemonSetWorkload) ID() string {

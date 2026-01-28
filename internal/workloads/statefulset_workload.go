@@ -32,6 +32,8 @@ type StatefulSetWorkload struct {
 	StatefulSet *appsv1.StatefulSet
 }
 
+func (w *StatefulSetWorkload) GetName() string         { return w.StatefulSet.GetName() }
+func (w *StatefulSetWorkload) GetNamespace() string    { return w.StatefulSet.GetNamespace() }
 func (w *StatefulSetWorkload) Resource() client.Object { return w.StatefulSet }
 func (w *StatefulSetWorkload) Kind() kinds.Kind        { return kinds.StatefulSetKind }
 func (w *StatefulSetWorkload) ID() string {

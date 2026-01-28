@@ -33,6 +33,8 @@ type DeploymentWorkload struct {
 	Deployment *appsv1.Deployment
 }
 
+func (w *DeploymentWorkload) GetName() string         { return w.Deployment.GetName() }
+func (w *DeploymentWorkload) GetNamespace() string    { return w.Deployment.GetNamespace() }
 func (w *DeploymentWorkload) Resource() client.Object { return w.Deployment }
 func (w *DeploymentWorkload) Kind() kinds.Kind        { return kinds.DeploymentKind }
 func (w *DeploymentWorkload) ID() string {
