@@ -79,10 +79,12 @@ func (r *Registry) SetDependencyCycleDetected(namespace, name, kind string, stat
 	r.dependencyCyclesDetected.WithLabelValues(namespace, name, kind).Set(float64(state))
 }
 
+// SetWorkloadTargets sets the number of dependency targets extracted from a workload's annotations by Cascader.
 func (r *Registry) SetWorkloadTargets(namespace, name, kind string, value float64) {
 	r.workingTargets.WithLabelValues(namespace, name, kind).Set(value)
 }
 
+// IncRestartsPerformed increments the total number of restarts performed by Cascader.
 func (r *Registry) IncRestartsPerformed(namespace, name, kind string) {
 	r.restartsPerformed.WithLabelValues(namespace, name, kind).Inc()
 }
