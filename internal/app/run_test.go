@@ -71,10 +71,10 @@ func TestRun(t *testing.T) {
 		err := Run(ctx, "v0.0.0", args, out)
 
 		require.Error(t, err)
-		assert.EqualError(t, err, "error parsing arguments: unknown flag: --invalid-flag")
+		assert.EqualError(t, err, "unknown flag: --invalid-flag")
 	})
 
-	t.Run("Request Help", func(t *testing.T) {
+	t.Run("Request version", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
@@ -97,7 +97,7 @@ func TestRun(t *testing.T) {
 		err := Run(ctx, "v0.0.0", args, out)
 
 		require.Error(t, err)
-		assert.EqualError(t, err, "error parsing arguments: invalid value for flag --log-encoder: must be one of: json, console.")
+		assert.EqualError(t, err, "invalid value for flag --log-encoder: must be one of: json, console.")
 	})
 
 	t.Run("Not unique Annotations", func(t *testing.T) {
@@ -117,6 +117,6 @@ func TestRun(t *testing.T) {
 		err := Run(ctx, "v0.0.0", args, out)
 
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "annotation values must be unique: duplicate annotation")
+		assert.ErrorContains(t, err, "duplicate annotation value \"cascader.tkb.ch/deployment\"")
 	})
 }

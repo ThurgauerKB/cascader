@@ -52,23 +52,24 @@ func init() {
 func Run(ctx context.Context, version string, args []string, w io.Writer) error {
 	// Parse and validate command-line arguments
 	flags, err := flag.ParseArgs(args, version)
+
+	logger, lErr := logging.InitLogging(flags, w)
+	setupLog := logger.WithName("setup")
+	setupLog.Info("initializing cascader", "version", version)
+
 	if err != nil {
 		if tinyflags.IsHelpRequested(err) || tinyflags.IsVersionRequested(err) {
 			fmt.Fprint(w, err.Error()) // nolint:errcheck
 			return nil
 		}
-
-		return fmt.Errorf("error parsing arguments: %w", err)
+		return err
 	}
 
-	// Configure logging
-	logger, err := logging.InitLogging(flags, w)
-	if err != nil {
-		return fmt.Errorf("error setting up logger: %w", err)
+	// Setup logger immediately so startup errors are correctly logged.
+	if lErr != nil {
+		setupLog.Error(lErr, "error setting up logger")
+		return nil
 	}
-
-	setupLog := logger.WithName("setup")
-	setupLog.Info("initializing cascader", "version", version)
 
 	// Validate annotation uniqueness
 	configuredAnnotations := map[string]string{
@@ -79,7 +80,8 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 		"RequeueAfter":        flags.RequeueAfterAnnotation,
 	}
 	if err := utils.UniqueAnnotations(configuredAnnotations); err != nil {
-		return fmt.Errorf("annotation values must be unique: %w", err)
+		setupLog.Error(err, "annotation values must be unique")
+		return err
 	}
 	setupLog.Info("configured annotations", "values", utils.FormatAnnotations(configuredAnnotations))
 
@@ -120,7 +122,8 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 	// Create and initialize the manager
 	cfg, err := ctrl.GetConfig()
 	if err != nil {
-		return fmt.Errorf("unable to get Kubernetes REST config: %w", err)
+		setupLog.Error(err, "unable to get Kubernetes REST config")
+		return err
 	}
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:                 scheme,
@@ -133,7 +136,8 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 		Cache:                  cacheOpts,
 	})
 	if err != nil {
-		return fmt.Errorf("unable to create manager: %w", err)
+		setupLog.Error(err, "unable to create manager")
+		return err
 	}
 
 	// Log watching namespaces
@@ -163,7 +167,8 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 			RequeueAfterDefault:           flags.RequeueAfterDefault,
 		},
 	}).SetupWithManager(mgr); err != nil {
-		return fmt.Errorf("unable to create Deployment controller: %w", err)
+		setupLog.Error(err, "unable to create Deployment controller")
+		return nil
 	}
 
 	// Setup StatefulSet controller
@@ -179,7 +184,8 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 			RequeueAfterDefault:           flags.RequeueAfterDefault,
 		},
 	}).SetupWithManager(mgr); err != nil {
-		return fmt.Errorf("unable to create StatefulSet controller: %w", err)
+		setupLog.Error(err, "unable to create StatefulSet controller")
+		return nil
 	}
 
 	// Setup DaemonSet controller
@@ -195,21 +201,25 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 			RequeueAfterDefault:           flags.RequeueAfterDefault,
 		},
 	}).SetupWithManager(mgr); err != nil {
-		return fmt.Errorf("unable to create DaemonSet controller: %w", err)
+		setupLog.Error(err, "unable to create DaemonSet controller")
+		return nil
 	}
 
 	// Register health and readiness checks
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		return fmt.Errorf("failed to set up health check: %w", err)
+		setupLog.Error(err, "failed to set up health check")
+		return err
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		return fmt.Errorf("failed to set up ready check: %w", err)
+		setupLog.Error(err, "failed to set up ready check")
+		return err
 	}
 
 	// Start the manager
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
-		return fmt.Errorf("manager encountered an error while running: %w", err)
+		setupLog.Error(err, "manager encountered an error while running")
+		return err
 	}
 
 	return nil
