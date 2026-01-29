@@ -62,13 +62,14 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 			fmt.Fprint(w, err.Error()) // nolint:errcheck
 			return nil
 		}
+		setupLog.Error(err, "error setting up logger")
 		return err
 	}
 
 	// Setup logger immediately so startup errors are correctly logged.
 	if lErr != nil {
 		setupLog.Error(lErr, "error setting up logger")
-		return nil
+		return err
 	}
 
 	// Validate annotation uniqueness
@@ -168,7 +169,7 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create Deployment controller")
-		return nil
+		return err
 	}
 
 	// Setup StatefulSet controller
@@ -185,7 +186,7 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create StatefulSet controller")
-		return nil
+		return err
 	}
 
 	// Setup DaemonSet controller
@@ -202,7 +203,7 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create DaemonSet controller")
-		return nil
+		return err
 	}
 
 	// Register health and readiness checks
