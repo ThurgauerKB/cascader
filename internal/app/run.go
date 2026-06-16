@@ -160,7 +160,7 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 		BaseReconciler: controller.BaseReconciler{
 			Logger:                        &logger,
 			KubeClient:                    mgr.GetClient(),
-			Recorder:                      mgr.GetEventRecorderFor("deployment-controller"),
+			Recorder:                      mgr.GetEventRecorder("deployment-controller"),
 			Metrics:                       metricsReg,
 			AnnotationKindMap:             annotationKindMap,
 			LastObservedRestartAnnotation: flags.LastObservedRestartAnnotation,
@@ -177,7 +177,7 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 		BaseReconciler: controller.BaseReconciler{
 			Logger:                        &logger,
 			KubeClient:                    mgr.GetClient(),
-			Recorder:                      mgr.GetEventRecorderFor("statefulset-controller"),
+			Recorder:                      mgr.GetEventRecorder("statefulset-controller"),
 			Metrics:                       metricsReg,
 			AnnotationKindMap:             annotationKindMap,
 			LastObservedRestartAnnotation: flags.LastObservedRestartAnnotation,
@@ -194,7 +194,7 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 		BaseReconciler: controller.BaseReconciler{
 			Logger:                        &logger,
 			KubeClient:                    mgr.GetClient(),
-			Recorder:                      mgr.GetEventRecorderFor("daemonset-controller"),
+			Recorder:                      mgr.GetEventRecorder("daemonset-controller"),
 			Metrics:                       metricsReg,
 			AnnotationKindMap:             annotationKindMap,
 			LastObservedRestartAnnotation: flags.LastObservedRestartAnnotation,

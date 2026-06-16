@@ -35,7 +35,7 @@ type DaemonSetReconciler struct {
 }
 
 // +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;patch
-// +kubebuilder:rbac:groups="",resources=events,verbs=create
+// +kubebuilder:rbac:groups=events.k8s.io,resources=events,verbs=create;patch
 
 // Reconcile handles the reconciliation logic when a DaemonSet is updated.
 func (r *DaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

@@ -37,7 +37,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -61,7 +61,7 @@ func createBaseReconciler(objects ...client.Object) *BaseReconciler {
 	return &BaseReconciler{
 		Logger:                        &logr.Logger{},
 		KubeClient:                    fakeClient,
-		Recorder:                      record.NewFakeRecorder(10),
+		Recorder:                      events.NewFakeRecorder(10),
 		Metrics:                       metricsReg,
 		LastObservedRestartAnnotation: "cascader.tkb.ch/last-observed-restart",
 		RequeueAfterAnnotation:        "cascader.tkb.ch/requeueAfter",
@@ -132,17 +132,15 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 			Kind:    "Deployment",
 		})
 
-		// Capture logs into a string buffer
 		var logBuffer bytes.Buffer
-		logger := zap.New(zap.WriteTo(&logBuffer)) // Set up a zap logger that writes to logBuffer
+		logger := zap.New(zap.WriteTo(&logBuffer))
 
 		reconciler := createBaseReconciler(dep1, targetObj)
 		reconciler.Logger = &logger
 
 		result, err := reconciler.ReconcileWorkload(t.Context(), &workloads.DeploymentWorkload{Deployment: dep1})
 		assert.NoError(t, err, "Expected no error on successful reconciliation")
-		expectedResult := ctrl.Result{}
-		assert.Equal(t, expectedResult, result, "Expected successful result")
+		assert.Equal(t, ctrl.Result{}, result, "Expected successful result")
 
 		logOutput := logBuffer.String()
 		assert.Contains(t, logOutput, "No targets found; skipping reload.")
@@ -203,8 +201,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		result, err := reconciler.ReconcileWorkload(t.Context(), &workloads.DeploymentWorkload{Deployment: dep1})
 		require.Error(t, err)
 		assert.EqualError(t, err, "failed to create targets: cannot create target for workload: invalid reference: invalid format: invalid/target/annotation")
-		expectedResult := ctrl.Result{}
-		assert.Equal(t, expectedResult, result, "Expected successful result")
+		assert.Equal(t, ctrl.Result{}, result, "Expected successful result")
 	})
 
 	t.Run("Successful Reconciliation (use invalid requeue duration)", func(t *testing.T) {
@@ -260,17 +257,15 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 			Kind:    "Deployment",
 		})
 
-		// Capture logs into a string buffer
 		var logBuffer bytes.Buffer
-		logger := zap.New(zap.WriteTo(&logBuffer)) // Set up a zap logger that writes to logBuffer
+		logger := zap.New(zap.WriteTo(&logBuffer))
 
 		reconciler := createBaseReconciler(dep1, targetObj)
 		reconciler.Logger = &logger
 
 		result, err := reconciler.ReconcileWorkload(t.Context(), &workloads.DeploymentWorkload{Deployment: dep1})
 		assert.NoError(t, err, "Expected no error on successful reconciliation")
-		expectedResult := ctrl.Result{RequeueAfter: defaultRequeuAfter}
-		assert.Equal(t, expectedResult, result, "Expected successful result with default requeue duration")
+		assert.Equal(t, ctrl.Result{RequeueAfter: defaultRequeuAfter}, result, "Expected successful result with default requeue duration")
 
 		logOutput := logBuffer.String()
 		assert.Contains(t, logOutput, "invalid ", "Expected log to contain message about invalid requeue duration")
@@ -319,17 +314,15 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 			},
 		}
 
-		// Capture logs into a string buffer
 		var logBuffer bytes.Buffer
-		logger := zap.New(zap.WriteTo(&logBuffer)) // Set up a zap logger that writes to logBuffer
+		logger := zap.New(zap.WriteTo(&logBuffer))
 
 		reconciler := createBaseReconciler(obj, targetObj)
 		reconciler.Logger = &logger
 
 		result, err := reconciler.ReconcileWorkload(t.Context(), &workloads.DeploymentWorkload{Deployment: obj})
 		assert.NoError(t, err, "Expected no error on successful reconciliation")
-		expectedResult := ctrl.Result{}
-		assert.Equal(t, expectedResult, result, "Expected successful result with default requeue duration")
+		assert.Equal(t, ctrl.Result{}, result, "Expected successful result with default requeue duration")
 	})
 
 	t.Run("No Workload Targets", func(t *testing.T) {
@@ -378,15 +371,14 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		}
 
 		var logBuffer bytes.Buffer
-		logger := zap.New(zap.WriteTo(&logBuffer)) // Set up a zap logger that writes to logBuffer
+		logger := zap.New(zap.WriteTo(&logBuffer))
 
 		reconciler := createBaseReconciler(obj)
 		reconciler.Logger = &logger
 
 		result, err := reconciler.ReconcileWorkload(t.Context(), &workloads.DeploymentWorkload{Deployment: obj})
 		assert.NoError(t, err, "Expected no error on successful reconciliation")
-		expectedResult := ctrl.Result{}
-		assert.Equal(t, expectedResult, result, "Expected successful result")
+		assert.Equal(t, ctrl.Result{}, result, "Expected successful result")
 
 		logOutput := logBuffer.String()
 		expectedLog := "direct cycle detected: adding dependency from Deployment/test-namespace/test-deployment creates a direct cycle: Deployment/test-namespace/test-deployment"
@@ -447,21 +439,19 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 			},
 		}
 
-		// Capture logs into a string buffer
 		var logBuffer bytes.Buffer
-		logger := zap.New(zap.WriteTo(&logBuffer)) // Set up a zap logger that writes to logBuffer
+		logger := zap.New(zap.WriteTo(&logBuffer))
 
 		reconciler := createBaseReconciler(obj, targetObj)
 		reconciler.Logger = &logger
 
 		result, err := reconciler.ReconcileWorkload(t.Context(), &workloads.DeploymentWorkload{Deployment: obj})
 		assert.NoError(t, err, "Expected no error on successful reconciliation")
-		expectedResult := ctrl.Result{}
-		assert.Equal(t, expectedResult, result, "Expected successful result")
+		assert.Equal(t, ctrl.Result{}, result, "Expected successful result")
 
 		logOutput := logBuffer.String()
 		assert.Contains(t, logOutput, restartDetectedMsg, "Expected log to contain message about restart detected")
-		assert.Contains(t, logOutput, "Workload is stable", "Expected log to contain message about stable workload")
+		assert.Contains(t, logOutput, workloadStableMsg, "Expected log to contain message about stable workload")
 		assert.Contains(t, logOutput, "Dependent targets extracted")
 		assert.Contains(t, logOutput, successfullTriggerTargetMsg, "Expected log to contain message about successful reload")
 		assert.Contains(t, logOutput, successfullTriggerAllTargetsMsg, "Expected log to contain message about successful reload")
@@ -515,8 +505,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		result, err := reconciler.ReconcileWorkload(t.Context(), &workloads.DeploymentWorkload{Deployment: sourceObj})
 
 		assert.NoError(t, err, "Expected no error during reconciliation")
-		expectedResult := ctrl.Result{RequeueAfter: defaultRequeuAfter}
-		assert.Equal(t, expectedResult, result, "Expected successful result with default requeue duration")
+		assert.Equal(t, ctrl.Result{RequeueAfter: defaultRequeuAfter}, result, "Expected successful result with default requeue duration")
 	})
 
 	t.Run("Partial successfully reloaded targets", func(t *testing.T) {
@@ -572,14 +561,12 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 			},
 		}
 
-		// Create fake client with objects
 		baseFakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(obj, targetObj, notfoundDeployment).Build()
 		fakeClient := &testutils.MockClientWithError{
 			Client:        baseFakeClient,
 			PatchErrorFor: testutils.NamedError{Name: "notfound-deployment", Namespace: "test-namespace"},
 		}
 
-		// Capture logs into a string buffer
 		var logBuffer bytes.Buffer
 		logger := zap.New(zap.WriteTo(&logBuffer))
 
@@ -589,8 +576,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 
 		result, err := reconciler.ReconcileWorkload(t.Context(), &workloads.DeploymentWorkload{Deployment: obj})
 		assert.NoError(t, err)
-		expectedResult := ctrl.Result{}
-		assert.Equal(t, expectedResult, result, "Expected successful result")
+		assert.Equal(t, ctrl.Result{}, result, "Expected successful result")
 
 		logOutput := logBuffer.String()
 		assert.Contains(t, logOutput, workloadStableMsg, "Expected log to contain message about stable workload")
@@ -620,14 +606,12 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 			},
 		}
 
-		// Create fake client with objects
 		baseFakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(obj).Build()
 		fakeClient := &testutils.MockClientWithError{
 			Client:        baseFakeClient,
 			PatchErrorFor: testutils.NamedError{Name: "notfound-deployment", Namespace: "test-namespace"},
 		}
 
-		// Capture logs into a string buffer
 		var logBuffer bytes.Buffer
 		logger := zap.New(zap.WriteTo(&logBuffer))
 
@@ -637,8 +621,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 
 		result, err := reconciler.ReconcileWorkload(t.Context(), &workloads.DeploymentWorkload{Deployment: obj})
 		require.Error(t, err)
-		expectedResult := ctrl.Result{}
-		assert.Equal(t, expectedResult, result, "Expected successful result")
+		assert.Equal(t, ctrl.Result{}, result, "Expected successful result")
 		assert.ErrorContains(t, err, "failed to patch restart annotation: failed to patch annotation \"cascader.tkb.ch/last-observed-restart\"")
 		assert.ErrorContains(t, err, "simulated patch error")
 	})
@@ -670,7 +653,6 @@ func TestSetLastObservedRestartAnnotation(t *testing.T) {
 		err := reconciler.setLastObservedRestartAnnotation(ctx, &workloads.DeploymentWorkload{Deployment: dep}, "true")
 		assert.NoError(t, err)
 
-		// Confirm annotation was set
 		var updated appsv1.Deployment
 		err = reconciler.KubeClient.Get(ctx, client.ObjectKeyFromObject(dep), &updated)
 		assert.NoError(t, err)
@@ -705,7 +687,6 @@ func TestClearLastObservedRestartAnnotation(t *testing.T) {
 		err := reconciler.clearLastObservedRestartAnnotation(ctx, &workloads.DeploymentWorkload{Deployment: dep})
 		assert.NoError(t, err)
 
-		// Confirm annotation was set
 		var updated appsv1.Deployment
 		err = reconciler.KubeClient.Get(ctx, client.ObjectKeyFromObject(dep), &updated)
 		assert.NoError(t, err)

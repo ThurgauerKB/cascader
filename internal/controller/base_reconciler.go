@@ -31,7 +31,7 @@ import (
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -40,7 +40,7 @@ import (
 type BaseReconciler struct {
 	KubeClient                    client.Client           // KubeClient is the Kubernetes API client.
 	Logger                        *logr.Logger            // Logger is used for logging reconciliation events.
-	Recorder                      record.EventRecorder    // Recorder records Kubernetes events.
+	Recorder                      events.EventRecorder    // Recorder records Kubernetes events.
 	Metrics                       *metrics.Registry       // Metrics is used for recording metrics.
 	AnnotationKindMap             kinds.AnnotationKindMap // AnnotationKindMap maps annotation keys to workload kinds.
 	LastObservedRestartAnnotation string                  // LastObservedRestartAnnotation is the annotation key for last observed restarts.
@@ -96,7 +96,15 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, workload workloa
 	if err := b.checkCycle(ctx, id, targets); err != nil {
 		if cycleErr, ok := err.(*CycleError); ok {
 			b.Metrics.SetDependencyCycleDetected(ns, name, kind, metrics.CycleDetected)
-			b.Recorder.Eventf(res, corev1.EventTypeWarning, "CycleDetected", "Dependency cycle detected: %s", cycleErr.Path)
+			b.Recorder.Eventf(
+				res,
+				nil,
+				corev1.EventTypeWarning,
+				"CycleDetected",
+				"CheckDependencyCycle",
+				"Dependency cycle detected: %s",
+				cycleErr.Path,
+			)
 		}
 		log.Error(err, "Dependency cycle detected; skipping reload")
 		return ctrl.Result{}, nil // Do not return an error to avoid requeuing the workload.
@@ -226,10 +234,13 @@ func (b *BaseReconciler) triggerReloads(ctx context.Context, workload workloads.
 			log.Error(err, "Failed to trigger reload", "targetID", targetID)
 			b.Recorder.Eventf(
 				res,
+				nil,
 				corev1.EventTypeWarning,
 				"ReloadFailed",
+				"TriggerReload",
 				"Cascader failed to trigger reload due to change in %q: %v",
-				workloadID, err,
+				workloadID,
+				err,
 			)
 			fail++
 
@@ -240,8 +251,10 @@ func (b *BaseReconciler) triggerReloads(ctx context.Context, workload workloads.
 		log.Info("Successfully triggered reload", "targetID", targetID)
 		b.Recorder.Eventf(
 			res,
+			nil,
 			corev1.EventTypeNormal,
 			"ReloadSucceeded",
+			"TriggerReload",
 			"Cascader triggered reload due to change in %q",
 			workloadID,
 		)

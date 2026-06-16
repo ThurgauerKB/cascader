@@ -36,6 +36,9 @@ type DeploymentReconciler struct {
 	BaseReconciler
 }
 
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;patch
+// +kubebuilder:rbac:groups=events.k8s.io,resources=events,verbs=create;patch
+
 // Reconcile handles the reconciliation logic when a Deployment is updated.
 func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
