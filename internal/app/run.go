@@ -49,27 +49,23 @@ func init() {
 }
 
 // Run is the main function of the application.
-func Run(ctx context.Context, version string, args []string, w io.Writer) error {
-	// Parse and validate command-line arguments
+func Run(ctx context.Context, version string, args []string, stdOut, stdErr io.Writer) error {
 	flags, err := flag.ParseArgs(args, version)
-
-	logger, lErr := logging.InitLogging(flags, w)
-	setupLog := logger.WithName("setup")
-	setupLog.Info("initializing cascader", "version", version)
-
 	if err != nil {
 		if tinyflags.IsHelpRequested(err) || tinyflags.IsVersionRequested(err) {
-			fmt.Fprint(w, err.Error()) // nolint:errcheck
+			_, _ = fmt.Fprint(stdOut, err.Error())
 			return nil
 		}
-		setupLog.Error(err, "error setting up logger")
+		_, _ = fmt.Fprintln(stdErr, err)
 		return err
 	}
 
-	// Setup logger immediately so startup errors are correctly logged.
-	if lErr != nil {
-		setupLog.Error(lErr, "error setting up logger")
-		return err
+	logger := logging.InitLogging(flags, stdErr)
+	setupLog := logger.WithName("setup")
+	setupLog.Info("initializing cascader", "version", version)
+
+	if len(flags.OverriddenValues) > 0 {
+		setupLog.Info("CLI Overrides", "overrides", flags.OverriddenValues)
 	}
 
 	// Validate annotation uniqueness
@@ -126,10 +122,12 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 		setupLog.Error(err, "unable to get Kubernetes REST config")
 		return err
 	}
+
+	reconcilerLog := logger.WithName("reconciler")
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
-		Logger:                 logger,
+		Logger:                 reconcilerLog,
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: flags.ProbeAddr,
 		LeaderElection:         flags.LeaderElection,
@@ -158,7 +156,7 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 	// Setup Deployment controller
 	if err := (&controller.DeploymentReconciler{
 		BaseReconciler: controller.BaseReconciler{
-			Logger:                        &logger,
+			Logger:                        &reconcilerLog,
 			KubeClient:                    mgr.GetClient(),
 			Recorder:                      mgr.GetEventRecorder("deployment-controller"),
 			Metrics:                       metricsReg,
@@ -175,7 +173,7 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 	// Setup StatefulSet controller
 	if err := (&controller.StatefulSetReconciler{
 		BaseReconciler: controller.BaseReconciler{
-			Logger:                        &logger,
+			Logger:                        &reconcilerLog,
 			KubeClient:                    mgr.GetClient(),
 			Recorder:                      mgr.GetEventRecorder("statefulset-controller"),
 			Metrics:                       metricsReg,
@@ -192,7 +190,7 @@ func Run(ctx context.Context, version string, args []string, w io.Writer) error 
 	// Setup DaemonSet controller
 	if err := (&controller.DaemonSetReconciler{
 		BaseReconciler: controller.BaseReconciler{
-			Logger:                        &logger,
+			Logger:                        &reconcilerLog,
 			KubeClient:                    mgr.GetClient(),
 			Recorder:                      mgr.GetEventRecorder("daemonset-controller"),
 			Metrics:                       metricsReg,

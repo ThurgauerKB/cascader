@@ -32,7 +32,7 @@ var (
 func main() {
 	ctx := ctrl.SetupSignalHandler()
 
-	if err := app.Run(ctx, Version, os.Args[1:], os.Stdout); err != nil {
+	if err := app.Run(ctx, Version, os.Args[1:], os.Stdout, os.Stderr); err != nil {
 		os.Exit(1)
 	}
 }

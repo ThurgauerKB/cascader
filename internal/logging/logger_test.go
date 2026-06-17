@@ -1,5 +1,5 @@
 /*
-Copyright 2025 Thurgauer Kantonalbank
+Copyright 2025 containeroo.ch
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	uzap "go.uber.org/zap"
 	zapcore "go.uber.org/zap/zapcore"
 )
@@ -43,8 +42,7 @@ func TestInitLogging(t *testing.T) {
 		}
 		var buf bytes.Buffer
 
-		logger, err := InitLogging(opts, &buf)
-		assert.NoError(t, err)
+		logger := InitLogging(opts, &buf)
 		assert.NotEqual(t, logr.Logger{}, logger)
 	})
 
@@ -58,41 +56,8 @@ func TestInitLogging(t *testing.T) {
 		}
 		var buf bytes.Buffer
 
-		logger, err := InitLogging(opts, &buf)
-		assert.NoError(t, err)
+		logger := InitLogging(opts, &buf)
 		assert.NotEqual(t, logr.Logger{}, logger)
-	})
-
-	t.Run("Invalid Log Encoder", func(t *testing.T) {
-		t.Parallel()
-
-		opts := flag.Options{
-			LogEncoder:         "invalid-encoder",
-			LogStacktraceLevel: "info",
-			LogDev:             false,
-		}
-		var buf bytes.Buffer
-
-		logger, err := InitLogging(opts, &buf)
-		require.Error(t, err)
-		assert.EqualError(t, err, `invalid log encoder: "invalid-encoder"`)
-		assert.Equal(t, logr.Logger{}, logger)
-	})
-
-	t.Run("Invalid Stacktrace Level", func(t *testing.T) {
-		t.Parallel()
-
-		opts := flag.Options{
-			LogEncoder:         "json",
-			LogStacktraceLevel: "invalid-level",
-			LogDev:             false,
-		}
-		var buf bytes.Buffer
-
-		logger, err := InitLogging(opts, &buf)
-		require.Error(t, err)
-		assert.EqualError(t, err, `invalid stacktrace level: "invalid-level"`)
-		assert.Equal(t, logr.Logger{}, logger)
 	})
 }
 
@@ -108,36 +73,8 @@ func TestSetupLogger(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		_, err := setupLogger(opts, &buf)
-		assert.NoError(t, err)
-	})
-
-	t.Run("Error Setup Logger - invalid encoder", func(t *testing.T) {
-		t.Parallel()
-
-		opts := flag.Options{
-			LogDev:             false,
-			LogEncoder:         "invalid",
-			LogStacktraceLevel: "panic",
-		}
-		var buf bytes.Buffer
-		_, err := setupLogger(opts, &buf)
-		require.Error(t, err)
-		assert.EqualError(t, err, "invalid log encoder: \"invalid\"")
-	})
-
-	t.Run("Error Setup Logger - invalid stacktrace level", func(t *testing.T) {
-		t.Parallel()
-
-		opts := flag.Options{
-			LogDev:             true,
-			LogEncoder:         "console",
-			LogStacktraceLevel: "invalid",
-		}
-		var buf bytes.Buffer
-		_, err := setupLogger(opts, &buf)
-		require.Error(t, err)
-		assert.EqualError(t, err, "invalid stacktrace level: \"invalid\"")
+		logger := setupLogger(opts, &buf)
+		assert.NotEqual(t, logr.Logger{}, logger)
 	})
 }
 
@@ -148,8 +85,7 @@ func TestEncoder(t *testing.T) {
 		t.Parallel()
 
 		e := "json"
-		enc, err := encoder(e)
-		assert.NoError(t, err)
+		enc := encoder(e)
 
 		entry := zapcore.Entry{
 			Level:   zapcore.InfoLevel,
@@ -166,8 +102,7 @@ func TestEncoder(t *testing.T) {
 		t.Parallel()
 
 		e := "console"
-		enc, err := encoder(e)
-		assert.NoError(t, err)
+		enc := encoder(e)
 
 		entry := zapcore.Entry{
 			Level:   zapcore.InfoLevel,
@@ -179,16 +114,6 @@ func TestEncoder(t *testing.T) {
 		expectedContains := "INFO\ttest message"
 		assert.Contains(t, buf.String(), expectedContains, "encoder output should contain console-formatted message")
 	})
-
-	t.Run("Invalid Encoder", func(t *testing.T) {
-		t.Parallel()
-
-		e := "invalid"
-		enc, err := encoder(e)
-		assert.Nil(t, enc)
-		require.Error(t, err)
-		assert.EqualError(t, err, "invalid log encoder: \"invalid\"")
-	})
 }
 
 func TestStacktraceLevel(t *testing.T) {
@@ -198,8 +123,7 @@ func TestStacktraceLevel(t *testing.T) {
 		t.Parallel()
 
 		level := "info"
-		result, err := stacktraceLevel(level)
-		assert.NoError(t, err)
+		result := stacktraceLevel(level)
 		assert.Equal(t, result, uzap.NewAtomicLevelAt(uzap.InfoLevel))
 	})
 
@@ -207,26 +131,14 @@ func TestStacktraceLevel(t *testing.T) {
 		t.Parallel()
 
 		level := "error"
-		result, err := stacktraceLevel(level)
-		assert.NoError(t, err)
+		result := stacktraceLevel(level)
 		assert.Equal(t, result, uzap.NewAtomicLevelAt(uzap.ErrorLevel))
 	})
 	t.Run("Stacktrace Level Panic", func(t *testing.T) {
 		t.Parallel()
 
 		level := "panic"
-		result, err := stacktraceLevel(level)
-		assert.NoError(t, err)
+		result := stacktraceLevel(level)
 		assert.Equal(t, result, uzap.NewAtomicLevelAt(uzap.PanicLevel))
-	})
-
-	t.Run("Invalid Stacktrace Level", func(t *testing.T) {
-		t.Parallel()
-
-		level := "invalid"
-		result, err := stacktraceLevel(level)
-		assert.Equal(t, uzap.AtomicLevel{}, result)
-		require.Error(t, err)
-		assert.EqualError(t, err, `invalid stacktrace level: "invalid"`)
 	})
 }

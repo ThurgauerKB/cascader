@@ -34,22 +34,23 @@ const (
 
 // Options holds all configuration options for the application.
 type Options struct {
-	WatchNamespaces               []string      // Namespaces to watch
-	MetricsAddr                   string        // Address for the metrics server
-	LeaderElection                bool          // Enable leader election
-	ProbeAddr                     string        // Address for health and readiness probes
-	SecureMetrics                 bool          // Serve metrics over HTTPS
-	EnableHTTP2                   bool          // Enable HTTP/2 for servers
-	DeploymentAnnotation          string        // Annotation key for monitored Deployments
-	StatefulSetAnnotation         string        // Annotation key for monitored StatefulSets
-	DaemonSetAnnotation           string        // Annotation key for monitored DaemonSets
-	LastObservedRestartAnnotation string        // Annotation key for last observed restart
-	RequeueAfterAnnotation        string        // Annotation key for requeue interval
-	RequeueAfterDefault           time.Duration // Default requeue interval
-	EnableMetrics                 bool          // Enable or disable metrics
-	LogEncoder                    string        // Log format: "json" or "console"
-	LogStacktraceLevel            string        // Stacktrace log level
-	LogDev                        bool          // Enable development logging mode
+	WatchNamespaces               []string       // Namespaces to watch
+	MetricsAddr                   string         // Address for the metrics server
+	LeaderElection                bool           // Enable leader election
+	ProbeAddr                     string         // Address for health and readiness probes
+	SecureMetrics                 bool           // Serve metrics over HTTPS
+	EnableHTTP2                   bool           // Enable HTTP/2 for servers
+	DeploymentAnnotation          string         // Annotation key for monitored Deployments
+	StatefulSetAnnotation         string         // Annotation key for monitored StatefulSets
+	DaemonSetAnnotation           string         // Annotation key for monitored DaemonSets
+	LastObservedRestartAnnotation string         // Annotation key for last observed restart
+	RequeueAfterAnnotation        string         // Annotation key for requeue interval
+	RequeueAfterDefault           time.Duration  // Default requeue interval
+	EnableMetrics                 bool           // Enable or disable metrics
+	LogEncoder                    string         // Log format: "json" or "console"
+	LogStacktraceLevel            string         // Stacktrace log level
+	LogDev                        bool           // Enable development logging mode
+	OverriddenValues              map[string]any // CLI overrides
 }
 
 // ParseArgs parses CLI flags into Options and handles --help/--version output.
@@ -134,6 +135,7 @@ func ParseArgs(args []string, version string) (Options, error) {
 
 	options.MetricsAddr = (*metricsBindAddress).String()
 	options.ProbeAddr = (*healthProbeaddress).String()
+	options.OverriddenValues = tf.OverriddenValues()
 
 	return options, nil
 }

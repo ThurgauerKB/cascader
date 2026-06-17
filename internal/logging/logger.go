@@ -17,7 +17,6 @@ limitations under the License.
 package logging
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/thurgauerkb/cascader/internal/flag"
@@ -40,62 +39,44 @@ const (
 )
 
 // InitLogging initializes logging based on provided configuration.
-func InitLogging(flags flag.Options, w io.Writer) (logr.Logger, error) {
-	logger, err := setupLogger(flags, w)
-	if err != nil {
-		return logr.Logger{}, err
-	}
+func InitLogging(flags flag.Options, w io.Writer) logr.Logger {
+	logger := setupLogger(flags, w)
 
 	log.SetLogger(logger)
 	klog.SetLogger(logger)
 
-	return logger, nil
+	return logger
 }
 
 // setupLogger configures and returns a logr.Logger based on given configuration.
-func setupLogger(flags flag.Options, w io.Writer) (logr.Logger, error) {
-	encoder, err := encoder(flags.LogEncoder)
-	if err != nil {
-		return logr.Logger{}, err
-	}
-
-	stackLevel, err := stacktraceLevel(flags.LogStacktraceLevel)
-	if err != nil {
-		return logr.Logger{}, err
-	}
-
+func setupLogger(flags flag.Options, w io.Writer) logr.Logger {
 	opts := zap.Options{
 		Development:     flags.LogDev,
 		DestWriter:      w,
-		Encoder:         encoder,
-		StacktraceLevel: stackLevel,
+		Encoder:         encoder(flags.LogEncoder),
+		StacktraceLevel: stacktraceLevel(flags.LogStacktraceLevel),
 	}
 
-	return zap.New(zap.UseFlagOptions(&opts)), nil
+	return zap.New(zap.UseFlagOptions(&opts))
 }
 
 // encoder returns the appropriate zapcore.Encoder based on name.
-func encoder(name string) (zapcore.Encoder, error) {
-	switch name {
-	case EncoderJSON:
-		return zapcore.NewJSONEncoder(uzap.NewProductionEncoderConfig()), nil
-	case EncoderConsole:
-		return zapcore.NewConsoleEncoder(uzap.NewDevelopmentEncoderConfig()), nil
-	default:
-		return nil, fmt.Errorf("invalid log encoder: %q", name)
+func encoder(name string) zapcore.Encoder {
+	if name == EncoderConsole {
+		return zapcore.NewConsoleEncoder(uzap.NewDevelopmentEncoderConfig())
 	}
+
+	return zapcore.NewJSONEncoder(uzap.NewProductionEncoderConfig())
 }
 
 // stacktraceLevel returns the appropriate zap.AtomicLevel based on the provided name.
-func stacktraceLevel(level string) (uzap.AtomicLevel, error) {
+func stacktraceLevel(level string) uzap.AtomicLevel {
 	switch level {
 	case LevelInfo:
-		return uzap.NewAtomicLevelAt(uzap.InfoLevel), nil
+		return uzap.NewAtomicLevelAt(uzap.InfoLevel)
 	case LevelError:
-		return uzap.NewAtomicLevelAt(uzap.ErrorLevel), nil
-	case LevelPanic:
-		return uzap.NewAtomicLevelAt(uzap.PanicLevel), nil
+		return uzap.NewAtomicLevelAt(uzap.ErrorLevel)
 	default:
-		return uzap.AtomicLevel{}, fmt.Errorf("invalid stacktrace level: %q", level)
+		return uzap.NewAtomicLevelAt(uzap.PanicLevel)
 	}
 }

@@ -42,10 +42,11 @@ func TestRun(t *testing.T) {
 			"--metrics-enabled=false",
 		}
 		out := &bytes.Buffer{}
+		errOut := &bytes.Buffer{}
 
 		errCh := make(chan error, 1)
 		go func() {
-			errCh <- Run(ctx, "v0.0.0", args, out)
+			errCh <- Run(ctx, "v0.0.0", args, out, errOut)
 		}()
 
 		time.Sleep(2 * time.Second)
@@ -67,11 +68,14 @@ func TestRun(t *testing.T) {
 		ctx := t.Context()
 		args := []string{"--invalid-flag"}
 		out := &bytes.Buffer{}
+		errOut := &bytes.Buffer{}
 
-		err := Run(ctx, "v0.0.0", args, out)
+		err := Run(ctx, "v0.0.0", args, out, errOut)
 
 		require.Error(t, err)
 		assert.EqualError(t, err, "unknown flag --invalid-flag")
+		assert.Empty(t, out.String())
+		assert.Equal(t, "unknown flag --invalid-flag\n", errOut.String())
 	})
 
 	t.Run("Request version", func(t *testing.T) {
@@ -80,11 +84,13 @@ func TestRun(t *testing.T) {
 		ctx := t.Context()
 		args := []string{"--version"}
 		out := &bytes.Buffer{}
+		errOut := &bytes.Buffer{}
 
-		err := Run(ctx, "v0.0.0", args, out)
+		err := Run(ctx, "v0.0.0", args, out, errOut)
 
 		assert.NoError(t, err)
 		assert.Equal(t, "v0.0.0", out.String())
+		assert.Empty(t, errOut.String())
 	})
 
 	t.Run("Logger error", func(t *testing.T) {
@@ -93,11 +99,14 @@ func TestRun(t *testing.T) {
 		ctx := t.Context()
 		args := []string{"--log-encoder", "invalid"}
 		out := &bytes.Buffer{}
+		errOut := &bytes.Buffer{}
 
-		err := Run(ctx, "v0.0.0", args, out)
+		err := Run(ctx, "v0.0.0", args, out, errOut)
 
 		require.Error(t, err)
 		assert.EqualError(t, err, "invalid value for flag --log-encoder: must be one of: json, console")
+		assert.Empty(t, out.String())
+		assert.Equal(t, "invalid value for flag --log-encoder: must be one of: json, console\n", errOut.String())
 	})
 
 	t.Run("Not unique Annotations", func(t *testing.T) {
@@ -113,10 +122,13 @@ func TestRun(t *testing.T) {
 			"--daemonset-annotation", "cascader.tkb.ch/daemonset",
 		}
 		out := &bytes.Buffer{}
+		errOut := &bytes.Buffer{}
 
-		err := Run(ctx, "v0.0.0", args, out)
+		err := Run(ctx, "v0.0.0", args, out, errOut)
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "duplicate annotation value \"cascader.tkb.ch/deployment\"")
+		assert.Empty(t, out.String())
+		assert.Contains(t, errOut.String(), "annotation values must be unique")
 	})
 }
