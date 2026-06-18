@@ -1,5 +1,5 @@
 /*
-Copyright 2025 Thurgauer Kantonalbank
+Copyright 2026 Thurgauer Kantonalbank
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -77,13 +77,15 @@ var _ = Describe("Deployment workload", Serial, Ordered, func() {
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q", restartDetectedMsg, obj1ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 
 		By(fmt.Sprintf("Fetches restart of %s", obj2ID))
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 	})
 
 	It("Restart Pod twice", func(ctx SpecContext) { // nolint:dupl
@@ -112,13 +114,15 @@ var _ = Describe("Deployment workload", Serial, Ordered, func() {
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q", restartDetectedMsg, obj1ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 
 		By(fmt.Sprintf("Fetches restart of %s", obj2ID))
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 
 		testutils.LogBuffer.Reset()
 
@@ -128,13 +132,15 @@ var _ = Describe("Deployment workload", Serial, Ordered, func() {
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q", restartDetectedMsg, obj1ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 
 		By(fmt.Sprintf("Fetches restart of %s", obj2ID))
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 	})
 
 	It("Delete Pod twice", func(ctx SpecContext) { // nolint:dupl
@@ -163,13 +169,15 @@ var _ = Describe("Deployment workload", Serial, Ordered, func() {
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q", restartDetectedMsg, obj1ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 
 		By(fmt.Sprintf("Fetches restart of %s", obj2ID))
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 
 		testutils.LogBuffer.Reset()
 
@@ -179,13 +187,15 @@ var _ = Describe("Deployment workload", Serial, Ordered, func() {
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q", restartDetectedMsg, obj1ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 
 		By(fmt.Sprintf("Fetches restart of %s", obj2ID))
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 	})
 
 	It("Delete pod of single replica", func(ctx SpecContext) {
@@ -221,7 +231,8 @@ var _ = Describe("Deployment workload", Serial, Ordered, func() {
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 	})
 
 	It("Delete pod of multiple replicas", func(ctx SpecContext) {
@@ -291,20 +302,23 @@ var _ = Describe("Deployment workload", Serial, Ordered, func() {
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q", restartDetectedMsg, obj1ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 
 		ready := 3
 		By(fmt.Sprintf("Waiting until %s is fully rolled out", obj1ID))
 		testutils.ContainsLogs(
 			fmt.Sprintf("workload is stable: ready=%d, desired=%d", ready, desiredReplicas),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 
 		By(fmt.Sprintf("Fetches restart of %s", obj2ID))
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 	})
 
 	It("Recreate strategy triggers target restart", func(ctx SpecContext) {
@@ -334,13 +348,15 @@ var _ = Describe("Deployment workload", Serial, Ordered, func() {
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q", restartDetectedMsg, obj1ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 
 		By(fmt.Sprintf("Fetches restart of %s", obj2ID))
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q,\"targetID\":%q", successfullTriggerTargetMsg, obj1ID, obj2ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 	})
 
 	It("Multiple targets in same namespace", func(ctx SpecContext) {
@@ -378,7 +394,8 @@ var _ = Describe("Deployment workload", Serial, Ordered, func() {
 		testutils.ContainsLogs(
 			fmt.Sprintf("%q,\"workloadID\":%q", restartDetectedMsg, obj1ID),
 			1*time.Minute,
-			2*time.Second)
+			2*time.Second,
+		)
 
 		By(fmt.Sprintf("Fetches restart of %s", obj2ID))
 		testutils.ContainsLogs(
