@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/containeroo/tinyflags v0.0.80
-	github.com/go-logr/logr v1.4.3
+	github.com/go-logr/logr v1.4.4
 	github.com/google/uuid v1.6.0
 	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.42.1
