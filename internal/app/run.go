@@ -64,8 +64,8 @@ func Run(ctx context.Context, version string, args []string, stdOut, stdErr io.W
 	setupLog := logger.WithName("setup")
 	setupLog.Info("initializing cascader", "version", version)
 
-	if len(flags.OverriddenValues) > 0 {
-		setupLog.Info("CLI Overrides", "overrides", flags.OverriddenValues)
+	if len(flags.Overrides) > 0 {
+		setupLog.Info("CLI Overrides", "overrides", flags.Overrides.Values())
 	}
 
 	// Validate annotation uniqueness
