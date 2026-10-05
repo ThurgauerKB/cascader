@@ -50,32 +50,17 @@ type BaseReconciler struct {
 
 // ReconcileWorkload handles the core reconciliation logic for any workload type.
 func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, workload workloads.Workload) (ctrl.Result, error) {
-	ns, name := workload.GetNamespace(), workload.GetName()
+	log := b.Logger.WithValues("workloadID", workload.ID())
 
-	res := workload.Resource()
-	id := workload.ID()
-	kind := workload.Kind().String()
-
-	log := b.Logger.WithValues("workloadID", id) // Append workload ID to logger context
-
-	// If the last-observed-restart annotation is not present, this is the first time the workload is being processed.
-	// The annotation will be removed after a successful reconciliation.
-	observed := hasAnnotation(res, b.LastObservedRestartAnnotation)
-	if !observed {
-		now := time.Now().Format(time.RFC3339)
-		log.Info("Restart detected, handling targets", "restartedAt", now)
-		if err := b.setLastObservedRestartAnnotation(ctx, workload, now); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to patch restart annotation: %w", err)
-		}
-	}
-
-	// Extract dependent targets from workload annotations.
-	targets, err := b.extractTargets(ctx, res)
+	observed, err := b.observeRestart(ctx, workload, log)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to create targets: %w", err)
+		return ctrl.Result{}, err
 	}
-	// Set the number of targets as a metric, even if no targets are found.
-	b.Metrics.SetWorkloadTargets(ns, name, kind, float64(len(targets)))
+
+	targets, err := b.loadTargets(ctx, workload)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	if len(targets) == 0 {
 		log.Info("No targets found; skipping reload.")
@@ -86,60 +71,126 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, workload workloa
 		log.Info("Dependent targets extracted", "targets", targetIDs(targets))
 	}
 
-	// Determine requeue interval.
-	dur, err := b.requeueDurationFor(res)
+	duration, err := b.requeueDurationFor(workload.Resource())
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Invalid requeue annotation, using default: %s", b.RequeueAfterDefault))
 	}
 
-	// Check for and handle circular dependencies among workloads to prevent infinite reload loops.
-	if err := b.checkCycle(ctx, id, targets); err != nil {
-		cycleErr, ok := err.(*CycleError)
-		if !ok {
-			return ctrl.Result{}, fmt.Errorf("check dependency cycle: %w", err)
-		}
-
-		b.Metrics.SetDependencyCycleDetected(ns, name, kind, metrics.CycleDetected)
-		b.Recorder.Eventf(
-			res,
-			nil,
-			corev1.EventTypeWarning,
-			"CycleDetected",
-			"CheckDependencyCycle",
-			"Dependency cycle detected: %s",
-			cycleErr.Path,
-		)
-		log.Error(err, "Dependency cycle detected; skipping reload")
-		return ctrl.Result{}, nil // Do not return an error to avoid requeuing the workload.
+	cycleDetected, err := b.handleDependencyCycle(ctx, workload, targets, log)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
-	// Reset dependency cycle metric to indicate no cycle was detected.
-	b.Metrics.SetDependencyCycleDetected(ns, name, kind, metrics.CycleNone)
-
-	// Check if the workload is in a stable state before triggering reloads.
-	stable, reason := workload.Stable()
-	if !stable {
-		log.Info(fmt.Sprintf("Workload not stable. Requeuing after %s.", dur), "reason", reason)
-		return ctrl.Result{RequeueAfter: dur}, nil
-	}
-	log.Info("Workload is stable", "reason", reason)
-
-	// Always remove the restartedAt annotation, even if target reloads will fail.
-	if err := b.clearLastObservedRestartAnnotation(ctx, workload); err != nil {
-		b.Logger.Error(err, "Failed to delete restartedAt annotation")
-	}
-
-	// Trigger reloads on all dependent targets and collect success/failure counts.
-	succ, fail := b.triggerReloads(ctx, workload, targets)
-	if fail > 0 {
-		// Some targets failed to reload. We log the error but do not return it,
-		// to avoid requeuing the workload unnecessarily.
-		log.Error(errors.New("partial target reload failure"), "Some targets failed to reload", "succeeded", succ, "failed", fail)
+	if cycleDetected {
 		return ctrl.Result{}, nil
 	}
 
-	log.Info("Finished handling targets", "succeeded", succ, "failed", fail)
+	if result, requeue := b.requeueIfUnstable(workload, duration, log); requeue {
+		return result, nil
+	}
 
+	succeeded, err := b.completeReloads(ctx, workload, targets)
+	if err != nil {
+		log.Error(err, "Could not complete target reloads", "succeeded", succeeded)
+		return ctrl.Result{}, nil
+	}
+
+	log.Info("Finished handling targets", "succeeded", succeeded)
 	return ctrl.Result{}, nil
+}
+
+// observeRestart records a newly observed restart and reports whether it was already recorded.
+func (b *BaseReconciler) observeRestart(ctx context.Context, workload workloads.Workload, log logr.Logger) (bool, error) {
+	if hasAnnotation(workload.Resource(), b.LastObservedRestartAnnotation) {
+		return true, nil
+	}
+
+	now := time.Now().Format(time.RFC3339)
+	log.Info("Restart detected, handling targets", "restartedAt", now)
+	if err := b.setLastObservedRestartAnnotation(ctx, workload, now); err != nil {
+		return false, fmt.Errorf("failed to patch restart annotation: %w", err)
+	}
+
+	return false, nil
+}
+
+// loadTargets extracts workload targets and records their count.
+func (b *BaseReconciler) loadTargets(ctx context.Context, workload workloads.Workload) ([]targets.Target, error) {
+	targets, err := b.extractTargets(ctx, workload.Resource())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create targets: %w", err)
+	}
+
+	b.Metrics.SetWorkloadTargets(
+		workload.GetNamespace(),
+		workload.GetName(),
+		workload.Kind().String(),
+		float64(len(targets)),
+	)
+	return targets, nil
+}
+
+// handleDependencyCycle records a cycle and reports whether reconciliation should stop.
+func (b *BaseReconciler) handleDependencyCycle(
+	ctx context.Context,
+	workload workloads.Workload,
+	targets []targets.Target,
+	log logr.Logger,
+) (bool, error) {
+	err := b.checkCycle(ctx, workload.ID(), targets)
+	if err == nil {
+		b.Metrics.SetDependencyCycleDetected(workload.GetNamespace(), workload.GetName(), workload.Kind().String(), metrics.CycleNone)
+		return false, nil
+	}
+
+	cycleErr, ok := err.(*CycleError)
+	if !ok {
+		return false, fmt.Errorf("check dependency cycle: %w", err)
+	}
+
+	b.Metrics.SetDependencyCycleDetected(workload.GetNamespace(), workload.GetName(), workload.Kind().String(), metrics.CycleDetected)
+	b.Recorder.Eventf(
+		workload.Resource(),
+		nil,
+		corev1.EventTypeWarning,
+		"CycleDetected",
+		"CheckDependencyCycle",
+		"Dependency cycle detected: %s",
+		cycleErr.Path,
+	)
+	log.Error(err, "Dependency cycle detected; skipping reload")
+	return true, nil
+}
+
+// requeueIfUnstable returns a requeue result when the workload is not yet stable.
+func (b *BaseReconciler) requeueIfUnstable(
+	workload workloads.Workload,
+	duration time.Duration,
+	log logr.Logger,
+) (ctrl.Result, bool) {
+	stable, reason := workload.Stable()
+	if !stable {
+		log.Info(fmt.Sprintf("Workload not stable. Requeuing after %s.", duration), "reason", reason)
+		return ctrl.Result{RequeueAfter: duration}, true
+	}
+
+	log.Info("Workload is stable", "reason", reason)
+	return ctrl.Result{}, false
+}
+
+// completeReloads clears the restart marker and triggers reloads for every target.
+func (b *BaseReconciler) completeReloads(
+	ctx context.Context,
+	workload workloads.Workload,
+	targets []targets.Target,
+) (succeeded int, err error) {
+	clearErr := b.clearLastObservedRestartAnnotation(ctx, workload)
+	succeeded, failed := b.triggerReloads(ctx, workload, targets)
+
+	if failed > 0 {
+		return succeeded, errors.Join(clearErr, fmt.Errorf("failed to trigger %d target reloads", failed))
+	}
+
+	return succeeded, clearErr
 }
 
 // setLastObservedRestartAnnotation sets the last-observed-restart annotation on the given workload.

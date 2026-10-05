@@ -49,7 +49,6 @@ const (
 	workloadStableMsg               string        = "Workload is stable"
 	successfullTriggerTargetMsg     string        = "Successfully triggered reload"
 	successfullTriggerAllTargetsMsg string        = "Finished handling targets"
-	failedTriggerTargetMsg          string        = "Some targets failed to reload"
 	restartDetectedMsg              string        = "Restart detected, handling targets"
 )
 
@@ -581,7 +580,7 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		logOutput := logBuffer.String()
 		assert.Contains(t, logOutput, workloadStableMsg, "Expected log to contain message about stable workload")
 		assert.Contains(t, logOutput, successfullTriggerTargetMsg, "Expected log to contain message about successful reload")
-		assert.Contains(t, logOutput, failedTriggerTargetMsg, "Expected log to contain failure message for notfound-deployment")
+		assert.Contains(t, logOutput, "Could not complete target reloads", "Expected log to contain a summary for failed target reloads")
 	})
 
 	t.Run("Error patching workload (Transitioning)", func(t *testing.T) {
@@ -625,6 +624,172 @@ func TestBaseReconciler_ReconcileWorkload(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to patch restart annotation: failed to patch annotation \"cascader.tkb.ch/last-observed-restart\"")
 		assert.ErrorContains(t, err, "simulated patch error")
 	})
+}
+
+func TestObserveRestart(t *testing.T) {
+	t.Parallel()
+
+	t.Run("records an unobserved restart", func(t *testing.T) {
+		t.Parallel()
+
+		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "source", Namespace: "default"}}
+		reconciler := createBaseReconciler(deployment)
+
+		observed, err := reconciler.observeRestart(
+			t.Context(),
+			&workloads.DeploymentWorkload{Deployment: deployment},
+			logr.Discard(),
+		)
+
+		require.NoError(t, err)
+		assert.False(t, observed)
+		assert.NotEmpty(t, deployment.GetAnnotations()[reconciler.LastObservedRestartAnnotation])
+	})
+
+	t.Run("keeps an existing observation", func(t *testing.T) {
+		t.Parallel()
+
+		const observedAt = "2026-01-02T03:04:05Z"
+		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
+			Name:      "source",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"cascader.tkb.ch/last-observed-restart": observedAt,
+			},
+		}}
+		reconciler := createBaseReconciler(deployment)
+
+		observed, err := reconciler.observeRestart(
+			t.Context(),
+			&workloads.DeploymentWorkload{Deployment: deployment},
+			logr.Discard(),
+		)
+
+		require.NoError(t, err)
+		assert.True(t, observed)
+		assert.Equal(t, observedAt, deployment.GetAnnotations()[reconciler.LastObservedRestartAnnotation])
+	})
+}
+
+func TestLoadTargets(t *testing.T) {
+	t.Parallel()
+
+	t.Run("extracts configured targets", func(t *testing.T) {
+		t.Parallel()
+
+		target := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "target", Namespace: "default"}}
+		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
+			Name:      "source",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"cascader.tkb.ch/deployment": "target",
+			},
+		}}
+		reconciler := createBaseReconciler(deployment, target)
+
+		targets, err := reconciler.loadTargets(t.Context(), &workloads.DeploymentWorkload{Deployment: deployment})
+
+		require.NoError(t, err)
+		assert.Len(t, targets, 1)
+		assert.Equal(t, "Deployment/default/target", targets[0].ID())
+	})
+
+	t.Run("returns invalid references as errors", func(t *testing.T) {
+		t.Parallel()
+
+		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
+			Name:      "source",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"cascader.tkb.ch/deployment": "invalid//reference",
+			},
+		}}
+		reconciler := createBaseReconciler(deployment)
+
+		targets, err := reconciler.loadTargets(t.Context(), &workloads.DeploymentWorkload{Deployment: deployment})
+
+		require.Error(t, err)
+		assert.Nil(t, targets)
+		assert.ErrorContains(t, err, "invalid reference")
+	})
+}
+
+func TestHandleDependencyCycle(t *testing.T) {
+	t.Parallel()
+
+	t.Run("records a direct cycle", func(t *testing.T) {
+		t.Parallel()
+
+		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "source", Namespace: "default"}}
+		reconciler := createBaseReconciler(deployment)
+		workload := &workloads.DeploymentWorkload{Deployment: deployment}
+		cycleTarget := targets.NewDeployment("default", "source", reconciler.KubeClient)
+
+		detected, err := reconciler.handleDependencyCycle(t.Context(), workload, []targets.Target{cycleTarget}, logr.Discard())
+
+		require.NoError(t, err)
+		assert.True(t, detected)
+	})
+
+	t.Run("continues without a cycle", func(t *testing.T) {
+		t.Parallel()
+
+		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "source", Namespace: "default"}}
+		reconciler := createBaseReconciler(deployment)
+
+		detected, err := reconciler.handleDependencyCycle(
+			t.Context(),
+			&workloads.DeploymentWorkload{Deployment: deployment},
+			nil,
+			logr.Discard(),
+		)
+
+		require.NoError(t, err)
+		assert.False(t, detected)
+	})
+}
+
+func TestRequeueIfUnstable(t *testing.T) {
+	t.Parallel()
+
+	reconciler := createBaseReconciler()
+	duration := 15 * time.Second
+
+	unstable := &appsv1.Deployment{
+		Spec:   appsv1.DeploymentSpec{Replicas: testutils.Int32Ptr(1)},
+		Status: appsv1.DeploymentStatus{ReadyReplicas: 0},
+	}
+	result, requeue := reconciler.requeueIfUnstable(
+		&workloads.DeploymentWorkload{Deployment: unstable},
+		duration,
+		logr.Discard(),
+	)
+
+	assert.True(t, requeue)
+	assert.Equal(t, ctrl.Result{RequeueAfter: duration}, result)
+}
+
+func TestCompleteReloads(t *testing.T) {
+	t.Parallel()
+
+	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
+		Name:      "source",
+		Namespace: "default",
+		Annotations: map[string]string{
+			"cascader.tkb.ch/last-observed-restart": "2026-01-02T03:04:05Z",
+		},
+	}}
+	reconciler := createBaseReconciler(deployment)
+
+	succeeded, err := reconciler.completeReloads(
+		t.Context(),
+		&workloads.DeploymentWorkload{Deployment: deployment},
+		nil,
+	)
+
+	require.NoError(t, err)
+	assert.Zero(t, succeeded)
+	assert.NotContains(t, deployment.GetAnnotations(), reconciler.LastObservedRestartAnnotation)
 }
 
 func TestSetLastObservedRestartAnnotation(t *testing.T) {
