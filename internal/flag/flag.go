@@ -21,7 +21,10 @@ import (
 	"net"
 	"time"
 
+	"go.uber.org/zap/zapcore"
+
 	"github.com/containeroo/tinyflags"
+	"github.com/thurgauerkb/cascader/internal/logging"
 )
 
 const (
@@ -47,8 +50,8 @@ type Options struct {
 	RequeueAfterAnnotation        string              // Annotation key for requeue interval
 	RequeueAfterDefault           time.Duration       // Default requeue interval
 	EnableMetrics                 bool                // Enable or disable metrics
-	LogEncoder                    string              // Log format: "json" or "console"
-	LogStacktraceLevel            string              // Stacktrace log level
+	LogFormat                     logging.LogFormat   // Log format
+	LogStacktraceLevel            zapcore.Level       // Stacktrace log level
 	LogDev                        bool                // Enable development logging mode
 	Overrides                     tinyflags.Overrides // CLI overrides
 }
@@ -118,20 +121,36 @@ func ParseArgs(args []string, version string) (Options, error) {
 		HideAllowed().
 		Value()
 
-	tf.StringVar(&options.LogEncoder, "log-encoder", "json", "Log format (json, console)").
-		Choices("json", "console").
-		HideAllowed().
+	tf.BoolVar(&options.LogDev, "log-devel", false, "Enable development mode logging").Value()
+
+	logFormat := tinyflags.Enum(
+		tf,
+		"log-format",
+		logging.LogFormatJSON,
+		"Log output format",
+		logging.LogFormatText,
+		logging.LogFormatJSON,
+	).
+		Short("l").
+		Placeholder("FORMAT").
 		Value()
 
-	tf.BoolVar(&options.LogDev, "log-devel", false, "Enable development mode logging").Value()
-	tf.StringVar(&options.LogStacktraceLevel, "log-stacktrace-level", "panic", "Stacktrace log level").
-		Choices("info", "error", "panic").
-		HideAllowed().
-		Value()
+	level := tinyflags.EnumMap(
+		tf,
+		"log-stacktrace-level",
+		zapcore.PanicLevel,
+		"Stacktrace log level",
+		tinyflags.Choice("debug", zapcore.DebugLevel),
+		tinyflags.Choice("info", zapcore.InfoLevel),
+		tinyflags.Choice("panic", zapcore.PanicLevel),
+	).Value()
 
 	if err := tf.Parse(args); err != nil {
 		return Options{}, err
 	}
+
+	options.LogFormat = *logFormat
+	options.LogStacktraceLevel = *level
 
 	options.MetricsAddr = (*metricsBindAddress).String()
 	options.ProbeAddr = (*healthProbeaddress).String()

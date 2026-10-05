@@ -61,7 +61,7 @@ func Run(ctx context.Context, version string, args []string, stdOut, stdErr io.W
 		return err
 	}
 
-	logger := logging.InitLogging(flags, stdErr)
+	logger := logging.InitLogging(flags.LogFormat, flags.LogStacktraceLevel, flags.LogDev, stdErr)
 	setupLog := logger.WithName("setup")
 	setupLog.Info("initializing cascader", "version", version)
 

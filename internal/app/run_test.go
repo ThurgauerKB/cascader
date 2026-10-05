@@ -97,16 +97,16 @@ func TestRun(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		args := []string{"--log-encoder", "invalid"}
+		args := []string{"--log-format", "invalid"}
 		out := &bytes.Buffer{}
 		errOut := &bytes.Buffer{}
 
 		err := Run(ctx, "v0.0.0", args, out, errOut)
 
 		require.Error(t, err)
-		assert.EqualError(t, err, "invalid value for flag --log-encoder: \"invalid\" must be one of: json, console")
+		assert.EqualError(t, err, "invalid value for flag --log-format: \"invalid\" must be one of: text, json")
 		assert.Empty(t, out.String())
-		assert.Equal(t, "invalid value for flag --log-encoder: \"invalid\" must be one of: json, console\n", errOut.String())
+		assert.Equal(t, "invalid value for flag --log-format: \"invalid\" must be one of: text, json\n", errOut.String())
 	})
 
 	t.Run("Not unique Annotations", func(t *testing.T) {

@@ -18,15 +18,11 @@ package logging
 
 import (
 	"bytes"
-	"strings"
 	"testing"
-
-	"github.com/thurgauerkb/cascader/internal/flag"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	uzap "go.uber.org/zap"
-	zapcore "go.uber.org/zap/zapcore"
 )
 
 func TestInitLogging(t *testing.T) {
@@ -35,110 +31,29 @@ func TestInitLogging(t *testing.T) {
 	t.Run("Valid Configuration JSON", func(t *testing.T) {
 		t.Parallel()
 
-		opts := flag.Options{
-			LogEncoder:         "json",
-			LogStacktraceLevel: "info",
-			LogDev:             false,
-		}
 		var buf bytes.Buffer
 
-		logger := InitLogging(opts, &buf)
+		logger := InitLogging(LogFormatJSON, uzap.InfoLevel, false, &buf)
 		assert.NotEqual(t, logr.Logger{}, logger)
 	})
 
 	t.Run("Valid Configuration Console", func(t *testing.T) {
 		t.Parallel()
 
-		opts := flag.Options{
-			LogEncoder:         "console",
-			LogStacktraceLevel: "error",
-			LogDev:             true,
-		}
 		var buf bytes.Buffer
 
-		logger := InitLogging(opts, &buf)
+		logger := InitLogging(LogFormatText, uzap.ErrorLevel, true, &buf)
 		assert.NotEqual(t, logr.Logger{}, logger)
 	})
 }
 
-func TestSetupLogger(t *testing.T) {
+func TestNewLogger(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Setup Logger", func(t *testing.T) {
 		t.Parallel()
-		opts := flag.Options{
-			LogDev:             true,
-			LogEncoder:         "json",
-			LogStacktraceLevel: "error",
-		}
-
 		var buf bytes.Buffer
-		logger := setupLogger(opts, &buf)
+		logger := newLogger(LogFormatJSON, uzap.ErrorLevel, true, &buf)
 		assert.NotEqual(t, logr.Logger{}, logger)
-	})
-}
-
-func TestEncoder(t *testing.T) {
-	t.Parallel()
-
-	t.Run("Encoder JSON", func(t *testing.T) {
-		t.Parallel()
-
-		e := "json"
-		enc := encoder(e)
-
-		entry := zapcore.Entry{
-			Level:   zapcore.InfoLevel,
-			Message: "test message",
-		}
-		buf, err := enc.EncodeEntry(entry, nil)
-		assert.NoError(t, err)
-
-		expectedPrefix := `{"level":"info","msg":"test message"`
-		assert.True(t, strings.HasPrefix(buf.String(), expectedPrefix), "encoder output should start with JSON prefix")
-	})
-
-	t.Run("Encoder Console", func(t *testing.T) {
-		t.Parallel()
-
-		e := "console"
-		enc := encoder(e)
-
-		entry := zapcore.Entry{
-			Level:   zapcore.InfoLevel,
-			Message: "test message",
-		}
-		buf, err := enc.EncodeEntry(entry, nil)
-		assert.NoError(t, err)
-
-		expectedContains := "INFO\ttest message"
-		assert.Contains(t, buf.String(), expectedContains, "encoder output should contain console-formatted message")
-	})
-}
-
-func TestStacktraceLevel(t *testing.T) {
-	t.Parallel()
-
-	t.Run("Stacktrace Level Info", func(t *testing.T) {
-		t.Parallel()
-
-		level := "info"
-		result := stacktraceLevel(level)
-		assert.Equal(t, result, uzap.NewAtomicLevelAt(uzap.InfoLevel))
-	})
-
-	t.Run("Stacktrace Level Error", func(t *testing.T) {
-		t.Parallel()
-
-		level := "error"
-		result := stacktraceLevel(level)
-		assert.Equal(t, result, uzap.NewAtomicLevelAt(uzap.ErrorLevel))
-	})
-	t.Run("Stacktrace Level Panic", func(t *testing.T) {
-		t.Parallel()
-
-		level := "panic"
-		result := stacktraceLevel(level)
-		assert.Equal(t, result, uzap.NewAtomicLevelAt(uzap.PanicLevel))
 	})
 }

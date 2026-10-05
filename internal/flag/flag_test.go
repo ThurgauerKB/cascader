@@ -23,6 +23,8 @@ import (
 	"github.com/containeroo/tinyflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thurgauerkb/cascader/internal/logging"
+	"go.uber.org/zap/zapcore"
 )
 
 func TestHelpRequested(t *testing.T) {
@@ -71,8 +73,8 @@ func TestParseArgs(t *testing.T) {
 		assert.True(t, opts.EnableMetrics)
 		assert.True(t, opts.SecureMetrics)
 		assert.False(t, opts.EnableHTTP2)
-		assert.Equal(t, "json", opts.LogEncoder)
-		assert.Equal(t, "panic", opts.LogStacktraceLevel)
+		assert.Equal(t, logging.LogFormatJSON, opts.LogFormat)
+		assert.Equal(t, zapcore.PanicLevel, opts.LogStacktraceLevel)
 		assert.False(t, opts.LogDev)
 	})
 
@@ -92,7 +94,7 @@ func TestParseArgs(t *testing.T) {
 			"--metrics-enabled=false",
 			"--metrics-secure=false",
 			"--enable-http2=false",
-			"--log-encoder", "console",
+			"--log-format", "text",
 			"--log-stacktrace-level", "info",
 			"--log-devel",
 		}
@@ -112,8 +114,8 @@ func TestParseArgs(t *testing.T) {
 		assert.False(t, opts.EnableMetrics)
 		assert.False(t, opts.SecureMetrics)
 		assert.False(t, opts.EnableHTTP2)
-		assert.Equal(t, "console", opts.LogEncoder)
-		assert.Equal(t, "info", opts.LogStacktraceLevel)
+		assert.Equal(t, logging.LogFormatText, opts.LogFormat)
+		assert.Equal(t, zapcore.InfoLevel, opts.LogStacktraceLevel)
 		assert.True(t, opts.LogDev)
 	})
 

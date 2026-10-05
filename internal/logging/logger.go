@@ -19,8 +19,6 @@ package logging
 import (
 	"io"
 
-	"github.com/thurgauerkb/cascader/internal/flag"
-
 	"github.com/go-logr/logr"
 	uzap "go.uber.org/zap"
 	zapcore "go.uber.org/zap/zapcore"
@@ -29,18 +27,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-const (
-	EncoderJSON    string = "json"
-	EncoderConsole string = "console"
+// LogFormat identifies the encoder used for application log output.
+type LogFormat string
 
-	LevelInfo  string = "info"
-	LevelError string = "error"
-	LevelPanic string = "panic"
+const (
+	// LogFormatText emits human-readable development-style logs.
+	LogFormatText LogFormat = "text"
+	// LogFormatJSON emits structured JSON logs.
+	LogFormatJSON LogFormat = "json"
 )
 
-// InitLogging initializes logging based on provided configuration.
-func InitLogging(flags flag.Options, w io.Writer) logr.Logger {
-	logger := setupLogger(flags, w)
+// InitLogging configures the process-wide controller-runtime and klog loggers.
+func InitLogging(format LogFormat, stacktraceLevel zapcore.Level, development bool, w io.Writer) logr.Logger {
+	logger := newLogger(format, stacktraceLevel, development, w)
 
 	log.SetLogger(logger)
 	klog.SetLogger(logger)
@@ -48,35 +47,21 @@ func InitLogging(flags flag.Options, w io.Writer) logr.Logger {
 	return logger
 }
 
-// setupLogger configures and returns a logr.Logger based on given configuration.
-func setupLogger(flags flag.Options, w io.Writer) logr.Logger {
+// newLogger builds a logger without registering it as a process-wide logger.
+func newLogger(format LogFormat, stacktraceLevel zapcore.Level, development bool, w io.Writer) logr.Logger {
+	var encoder zapcore.Encoder
+	if format == LogFormatJSON {
+		encoder = zapcore.NewJSONEncoder(uzap.NewProductionEncoderConfig())
+	} else {
+		encoder = zapcore.NewConsoleEncoder(uzap.NewDevelopmentEncoderConfig())
+	}
+
 	opts := zap.Options{
-		Development:     flags.LogDev,
+		Development:     development,
 		DestWriter:      w,
-		Encoder:         encoder(flags.LogEncoder),
-		StacktraceLevel: stacktraceLevel(flags.LogStacktraceLevel),
+		Encoder:         encoder,
+		StacktraceLevel: uzap.NewAtomicLevelAt(stacktraceLevel),
 	}
 
 	return zap.New(zap.UseFlagOptions(&opts))
-}
-
-// encoder returns the appropriate zapcore.Encoder based on name.
-func encoder(name string) zapcore.Encoder {
-	if name == EncoderConsole {
-		return zapcore.NewConsoleEncoder(uzap.NewDevelopmentEncoderConfig())
-	}
-
-	return zapcore.NewJSONEncoder(uzap.NewProductionEncoderConfig())
-}
-
-// stacktraceLevel returns the appropriate zap.AtomicLevel based on the provided name.
-func stacktraceLevel(level string) uzap.AtomicLevel {
-	switch level {
-	case LevelInfo:
-		return uzap.NewAtomicLevelAt(uzap.InfoLevel)
-	case LevelError:
-		return uzap.NewAtomicLevelAt(uzap.ErrorLevel)
-	default:
-		return uzap.NewAtomicLevelAt(uzap.PanicLevel)
-	}
 }
