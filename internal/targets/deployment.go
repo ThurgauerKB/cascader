@@ -29,14 +29,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// DeploymentSet handles rolling restarts for DeploymentSet resources.
+// DeploymentTarget handles rolling restarts for Deployment resources.
 type DeploymentTarget struct {
-	namespace  string        // Namespace of the DeploymentSet.
-	name       string        // Name of the DeploymentSet.
+	namespace  string        // Namespace of the Deployment.
+	name       string        // Name of the Deployment.
 	kubeClient client.Client // Kubernetes client.
 }
 
-// NewDeployment creates a new Deployment target
+// NewDeployment creates a Deployment restart target.
 func NewDeployment(namespace, name string, c client.Client) *DeploymentTarget {
 	return &DeploymentTarget{
 		namespace:  namespace,
@@ -45,11 +45,20 @@ func NewDeployment(namespace, name string, c client.Client) *DeploymentTarget {
 	}
 }
 
-func (t *DeploymentTarget) Kind() kinds.Kind        { return kinds.DeploymentKind }
-func (t *DeploymentTarget) Name() string            { return t.name }
-func (t *DeploymentTarget) Namespace() string       { return t.namespace }
+// Kind returns the Kubernetes kind managed by the target.
+func (t *DeploymentTarget) Kind() kinds.Kind { return kinds.DeploymentKind }
+
+// Name returns the target Deployment name.
+func (t *DeploymentTarget) Name() string { return t.name }
+
+// Namespace returns the target Deployment namespace.
+func (t *DeploymentTarget) Namespace() string { return t.namespace }
+
+// Resource returns an empty Deployment used to fetch the target.
 func (t *DeploymentTarget) Resource() client.Object { return &appsv1.Deployment{} }
-func (t *DeploymentTarget) ID() string              { return utils.GenerateID(t.Kind(), t.namespace, t.name) }
+
+// ID returns the target's stable workload identifier.
+func (t *DeploymentTarget) ID() string { return utils.GenerateID(t.Kind(), t.namespace, t.name) }
 
 // Trigger updates the "restartedAt" annotation on the Deployment to target a rolling restart.
 func (t *DeploymentTarget) Trigger(ctx context.Context) error {

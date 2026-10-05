@@ -29,6 +29,7 @@ var (
 	Commit  string = "none"
 )
 
+// main starts Cascader and exits nonzero when initialization or reconciliation fails.
 func main() {
 	ctx := ctrl.SetupSignalHandler()
 

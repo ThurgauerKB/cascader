@@ -94,18 +94,21 @@ func (b *BaseReconciler) ReconcileWorkload(ctx context.Context, workload workloa
 
 	// Check for and handle circular dependencies among workloads to prevent infinite reload loops.
 	if err := b.checkCycle(ctx, id, targets); err != nil {
-		if cycleErr, ok := err.(*CycleError); ok {
-			b.Metrics.SetDependencyCycleDetected(ns, name, kind, metrics.CycleDetected)
-			b.Recorder.Eventf(
-				res,
-				nil,
-				corev1.EventTypeWarning,
-				"CycleDetected",
-				"CheckDependencyCycle",
-				"Dependency cycle detected: %s",
-				cycleErr.Path,
-			)
+		cycleErr, ok := err.(*CycleError)
+		if !ok {
+			return ctrl.Result{}, fmt.Errorf("check dependency cycle: %w", err)
 		}
+
+		b.Metrics.SetDependencyCycleDetected(ns, name, kind, metrics.CycleDetected)
+		b.Recorder.Eventf(
+			res,
+			nil,
+			corev1.EventTypeWarning,
+			"CycleDetected",
+			"CheckDependencyCycle",
+			"Dependency cycle detected: %s",
+			cycleErr.Path,
+		)
 		log.Error(err, "Dependency cycle detected; skipping reload")
 		return ctrl.Result{}, nil // Do not return an error to avoid requeuing the workload.
 	}
@@ -216,7 +219,6 @@ func (b *BaseReconciler) requeueDurationFor(obj client.Object) (time.Duration, e
 	if err != nil {
 		return b.RequeueAfterDefault, fmt.Errorf("invalid annotation: %w", err)
 	}
-
 	return dur, nil
 }
 

@@ -18,19 +18,20 @@ package metrics
 
 import "github.com/prometheus/client_golang/prometheus"
 
+// CycleState is the numeric value exported for a workload's cycle status.
 type CycleState float64
 
 const (
-	CycleNone CycleState = iota
-	CycleDetected
+	CycleNone     CycleState = iota // CycleNone indicates no dependency cycle was found.
+	CycleDetected                   // CycleDetected indicates a dependency cycle was found.
 )
 
 // Registry provides a typed façade for recording AutoVPA Prometheus metrics.
 type Registry struct {
-	reg                      prometheus.Registerer
-	dependencyCyclesDetected *prometheus.GaugeVec
-	workingTargets           *prometheus.GaugeVec
-	restartsPerformed        *prometheus.CounterVec
+	reg                      prometheus.Registerer  // reg owns the registered Prometheus collectors.
+	dependencyCyclesDetected *prometheus.GaugeVec   // dependencyCyclesDetected records whether a workload has a dependency cycle.
+	workingTargets           *prometheus.GaugeVec   // workingTargets records the number of extracted dependency targets.
+	restartsPerformed        *prometheus.CounterVec // restartsPerformed counts successfully triggered workload restarts.
 }
 
 // NewRegistry creates and registers all AutoVPA metrics with the provided

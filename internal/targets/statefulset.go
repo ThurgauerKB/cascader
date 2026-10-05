@@ -36,7 +36,7 @@ type StatefulSetTarget struct {
 	kubeClient client.Client // Kubernetes client.
 }
 
-// NewStatefulSet creates a new StatefulSet target
+// NewStatefulSet creates a StatefulSet restart target.
 func NewStatefulSet(namespace, name string, c client.Client) *StatefulSetTarget {
 	return &StatefulSetTarget{
 		namespace:  namespace,
@@ -45,11 +45,20 @@ func NewStatefulSet(namespace, name string, c client.Client) *StatefulSetTarget 
 	}
 }
 
-func (t *StatefulSetTarget) Kind() kinds.Kind        { return kinds.StatefulSetKind }
-func (t *StatefulSetTarget) Name() string            { return t.name }
-func (t *StatefulSetTarget) Namespace() string       { return t.namespace }
+// Kind returns the Kubernetes kind managed by the target.
+func (t *StatefulSetTarget) Kind() kinds.Kind { return kinds.StatefulSetKind }
+
+// Name returns the target StatefulSet name.
+func (t *StatefulSetTarget) Name() string { return t.name }
+
+// Namespace returns the target StatefulSet namespace.
+func (t *StatefulSetTarget) Namespace() string { return t.namespace }
+
+// Resource returns an empty StatefulSet used to fetch the target.
 func (t *StatefulSetTarget) Resource() client.Object { return &appsv1.StatefulSet{} }
-func (t *StatefulSetTarget) ID() string              { return utils.GenerateID(t.Kind(), t.namespace, t.name) }
+
+// ID returns the target's stable workload identifier.
+func (t *StatefulSetTarget) ID() string { return utils.GenerateID(t.Kind(), t.namespace, t.name) }
 
 // Trigger updates the "restartedAt" annotation on the StatefulSet to target a rolling restart.
 func (t *StatefulSetTarget) Trigger(ctx context.Context) error {

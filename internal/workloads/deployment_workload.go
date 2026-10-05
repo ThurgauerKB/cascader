@@ -30,17 +30,27 @@ import (
 
 // DeploymentWorkload implements the workload interface for Deployments.
 type DeploymentWorkload struct {
-	Deployment *appsv1.Deployment
+	Deployment *appsv1.Deployment // Deployment is the Kubernetes object being reconciled.
 }
 
-func (w *DeploymentWorkload) GetName() string         { return w.Deployment.GetName() }
-func (w *DeploymentWorkload) GetNamespace() string    { return w.Deployment.GetNamespace() }
+// GetName returns the Deployment name.
+func (w *DeploymentWorkload) GetName() string { return w.Deployment.GetName() }
+
+// GetNamespace returns the Deployment namespace.
+func (w *DeploymentWorkload) GetNamespace() string { return w.Deployment.GetNamespace() }
+
+// Resource returns the underlying Deployment object.
 func (w *DeploymentWorkload) Resource() client.Object { return w.Deployment }
-func (w *DeploymentWorkload) Kind() kinds.Kind        { return kinds.DeploymentKind }
+
+// Kind returns the Deployment workload kind.
+func (w *DeploymentWorkload) Kind() kinds.Kind { return kinds.DeploymentKind }
+
+// ID returns the Deployment's stable workload identifier.
 func (w *DeploymentWorkload) ID() string {
 	return utils.GenerateID(w.Kind(), w.Deployment.GetNamespace(), w.Deployment.GetName())
 }
 
+// PodTemplateSpec returns the Deployment's pod template.
 func (w *DeploymentWorkload) PodTemplateSpec() *corev1.PodTemplateSpec {
 	return &w.Deployment.Spec.Template
 }
@@ -52,7 +62,7 @@ func (w *DeploymentWorkload) Stable() (isStable bool, reason string) {
 	updated := dep.Status.UpdatedReplicas
 	ready := dep.Status.ReadyReplicas
 	unavailable := dep.Status.UnavailableReplicas
-	desired := *dep.Spec.Replicas
+	desired := desiredReplicas(dep.Spec.Replicas)
 
 	if dep.Status.ObservedGeneration < dep.Generation {
 		return false, fmt.Sprintf("rollout in progress: observedGeneration=%d, generation=%d", dep.Status.ObservedGeneration, dep.Generation)
@@ -79,4 +89,12 @@ func (w *DeploymentWorkload) Stable() (isStable bool, reason string) {
 	}
 
 	return true, fmt.Sprintf("workload is stable: ready=%d, desired=%d", ready, desired)
+}
+
+// desiredReplicas returns the Kubernetes default when replicas is omitted.
+func desiredReplicas(replicas *int32) int32 {
+	if replicas == nil {
+		return 1
+	}
+	return *replicas
 }

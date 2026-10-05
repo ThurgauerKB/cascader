@@ -124,20 +124,42 @@ func SingleReplicaPodDeleted(oldObj, newObj client.Object) bool {
 	switch res := oldObj.(type) {
 	case *appsv1.Deployment:
 		dep, ok := newObj.(*appsv1.Deployment)
-		if !ok || res.Spec.Replicas == nil || dep.Spec.Replicas == nil || *res.Spec.Replicas != 1 {
+		if !isSingleReplicaDeployment(res, dep, ok) {
 			return false
 		}
-		return res.Status.ReadyReplicas == 1 && dep.Status.ReadyReplicas == 0 &&
-			res.Status.AvailableReplicas == 1 && dep.Status.AvailableReplicas == 0
+		return deploymentLostOnlyPod(res, dep)
 
 	case *appsv1.StatefulSet:
 		sts, ok := newObj.(*appsv1.StatefulSet)
-		if !ok || res.Spec.Replicas == nil || sts.Spec.Replicas == nil || *res.Spec.Replicas != 1 {
+		if !isSingleReplicaStatefulSet(res, sts, ok) {
 			return false
 		}
-		return res.Status.ReadyReplicas == 1 && sts.Status.ReadyReplicas == 0
+		return statefulSetLostOnlyPod(res, sts)
 	}
 	return false
+}
+
+// isSingleReplicaDeployment reports whether both Deployment versions specify one replica.
+func isSingleReplicaDeployment(old, new *appsv1.Deployment, sameType bool) bool {
+	return sameType && old.Spec.Replicas != nil && new.Spec.Replicas != nil &&
+		*old.Spec.Replicas == 1 && *new.Spec.Replicas == 1
+}
+
+// deploymentLostOnlyPod reports whether a healthy single-replica Deployment lost its only pod.
+func deploymentLostOnlyPod(old, new *appsv1.Deployment) bool {
+	return old.Status.ReadyReplicas == 1 && new.Status.ReadyReplicas == 0 &&
+		old.Status.AvailableReplicas == 1 && new.Status.AvailableReplicas == 0
+}
+
+// isSingleReplicaStatefulSet reports whether both StatefulSet versions specify one replica.
+func isSingleReplicaStatefulSet(old, new *appsv1.StatefulSet, sameType bool) bool {
+	return sameType && old.Spec.Replicas != nil && new.Spec.Replicas != nil &&
+		*old.Spec.Replicas == 1 && *new.Spec.Replicas == 1
+}
+
+// statefulSetLostOnlyPod reports whether a healthy single-replica StatefulSet lost its only pod.
+func statefulSetLostOnlyPod(old, new *appsv1.StatefulSet) bool {
+	return old.Status.ReadyReplicas == 1 && new.Status.ReadyReplicas == 0
 }
 
 // DaemonSetTransitioning returns true if a DaemonSet is updating pods or has unavailable pods.

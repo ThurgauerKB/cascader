@@ -36,7 +36,7 @@ type DaemonSetTarget struct {
 	kubeClient client.Client // Kubernetes client.
 }
 
-// NewDaemonSet creates a new DaemonSet target
+// NewDaemonSet creates a DaemonSet restart target.
 func NewDaemonSet(namespace, name string, c client.Client) *DaemonSetTarget {
 	return &DaemonSetTarget{
 		namespace:  namespace,
@@ -45,11 +45,20 @@ func NewDaemonSet(namespace, name string, c client.Client) *DaemonSetTarget {
 	}
 }
 
-func (t *DaemonSetTarget) Kind() kinds.Kind        { return kinds.DaemonSetKind }
-func (t *DaemonSetTarget) Name() string            { return t.name }
-func (t *DaemonSetTarget) Namespace() string       { return t.namespace }
+// Kind returns the Kubernetes kind managed by the target.
+func (t *DaemonSetTarget) Kind() kinds.Kind { return kinds.DaemonSetKind }
+
+// Name returns the target DaemonSet name.
+func (t *DaemonSetTarget) Name() string { return t.name }
+
+// Namespace returns the target DaemonSet namespace.
+func (t *DaemonSetTarget) Namespace() string { return t.namespace }
+
+// Resource returns an empty DaemonSet used to fetch the target.
 func (t *DaemonSetTarget) Resource() client.Object { return &appsv1.DaemonSet{} }
-func (t *DaemonSetTarget) ID() string              { return utils.GenerateID(t.Kind(), t.namespace, t.name) }
+
+// ID returns the target's stable workload identifier.
+func (t *DaemonSetTarget) ID() string { return utils.GenerateID(t.Kind(), t.namespace, t.name) }
 
 // Trigger updates the "restartedAt" annotation on the DaemonSet to target a rolling restart.
 func (t *DaemonSetTarget) Trigger(ctx context.Context) error {

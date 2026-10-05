@@ -18,7 +18,7 @@ package controller
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/thurgauerkb/cascader/internal/predicates"
 	"github.com/thurgauerkb/cascader/internal/workloads"
@@ -31,7 +31,7 @@ import (
 
 // DaemonSetReconciler reconciles DaemonSets to detect restarts and target reloads.
 type DaemonSetReconciler struct {
-	BaseReconciler
+	BaseReconciler // BaseReconciler provides shared reconciliation dependencies and behavior.
 }
 
 // +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;patch
@@ -48,7 +48,7 @@ func (r *DaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			logger.Info("DaemonSet not found; ignoring since object must be deleted")
 			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, errors.New("failed to fetch DaemonSet")
+		return ctrl.Result{}, fmt.Errorf("failed to fetch DaemonSet: %w", err)
 	}
 
 	return r.ReconcileWorkload(ctx, &workloads.DaemonSetWorkload{DaemonSet: ds})

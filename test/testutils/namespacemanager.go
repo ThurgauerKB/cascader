@@ -32,7 +32,7 @@ var NSManager = NewNamespaceManager()
 
 // NamespaceManager manages test namespaces.
 type NamespaceManager struct {
-	namespaces []string
+	namespaces []string // namespaces tracks namespaces created for a test.
 }
 
 // NewNamespaceManager initializes a new NamespaceManager.

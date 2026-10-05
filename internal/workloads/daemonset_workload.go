@@ -29,17 +29,27 @@ import (
 
 // DaemonSetWorkload implements the Workload interface for DaemonSets.
 type DaemonSetWorkload struct {
-	DaemonSet *appsv1.DaemonSet
+	DaemonSet *appsv1.DaemonSet // DaemonSet is the Kubernetes object being reconciled.
 }
 
-func (w *DaemonSetWorkload) GetName() string         { return w.DaemonSet.GetName() }
-func (w *DaemonSetWorkload) GetNamespace() string    { return w.DaemonSet.GetNamespace() }
+// GetName returns the DaemonSet name.
+func (w *DaemonSetWorkload) GetName() string { return w.DaemonSet.GetName() }
+
+// GetNamespace returns the DaemonSet namespace.
+func (w *DaemonSetWorkload) GetNamespace() string { return w.DaemonSet.GetNamespace() }
+
+// Resource returns the underlying DaemonSet object.
 func (w *DaemonSetWorkload) Resource() client.Object { return w.DaemonSet }
-func (w *DaemonSetWorkload) Kind() kinds.Kind        { return kinds.DaemonSetKind }
+
+// Kind returns the DaemonSet workload kind.
+func (w *DaemonSetWorkload) Kind() kinds.Kind { return kinds.DaemonSetKind }
+
+// ID returns the DaemonSet's stable workload identifier.
 func (w *DaemonSetWorkload) ID() string {
 	return utils.GenerateID(w.Kind(), w.DaemonSet.GetNamespace(), w.DaemonSet.GetName())
 }
 
+// PodTemplateSpec returns the DaemonSet's pod template.
 func (w *DaemonSetWorkload) PodTemplateSpec() *corev1.PodTemplateSpec {
 	return &w.DaemonSet.Spec.Template
 }

@@ -44,6 +44,7 @@ import (
 
 var scheme = runtime.NewScheme()
 
+// init registers the Kubernetes client-go types used by Cascader.
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 }

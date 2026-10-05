@@ -29,17 +29,27 @@ import (
 
 // StatefulSetWorkload implements the workload interface for StatefulSets.
 type StatefulSetWorkload struct {
-	StatefulSet *appsv1.StatefulSet
+	StatefulSet *appsv1.StatefulSet // StatefulSet is the Kubernetes object being reconciled.
 }
 
-func (w *StatefulSetWorkload) GetName() string         { return w.StatefulSet.GetName() }
-func (w *StatefulSetWorkload) GetNamespace() string    { return w.StatefulSet.GetNamespace() }
+// GetName returns the StatefulSet name.
+func (w *StatefulSetWorkload) GetName() string { return w.StatefulSet.GetName() }
+
+// GetNamespace returns the StatefulSet namespace.
+func (w *StatefulSetWorkload) GetNamespace() string { return w.StatefulSet.GetNamespace() }
+
+// Resource returns the underlying StatefulSet object.
 func (w *StatefulSetWorkload) Resource() client.Object { return w.StatefulSet }
-func (w *StatefulSetWorkload) Kind() kinds.Kind        { return kinds.StatefulSetKind }
+
+// Kind returns the StatefulSet workload kind.
+func (w *StatefulSetWorkload) Kind() kinds.Kind { return kinds.StatefulSetKind }
+
+// ID returns the StatefulSet's stable workload identifier.
 func (w *StatefulSetWorkload) ID() string {
 	return utils.GenerateID(w.Kind(), w.StatefulSet.GetNamespace(), w.StatefulSet.GetName())
 }
 
+// PodTemplateSpec returns the StatefulSet's pod template.
 func (w *StatefulSetWorkload) PodTemplateSpec() *corev1.PodTemplateSpec {
 	return &w.StatefulSet.Spec.Template
 }
@@ -49,7 +59,7 @@ func (w *StatefulSetWorkload) Stable() (isStable bool, reason string) {
 	sts := w.StatefulSet
 	updated := sts.Status.UpdatedReplicas
 	ready := sts.Status.ReadyReplicas
-	desired := *sts.Spec.Replicas
+	desired := desiredReplicas(sts.Spec.Replicas)
 
 	if sts.Status.ObservedGeneration < sts.Generation {
 		return false, fmt.Sprintf("rollout in progress: observedGeneration=%d, generation=%d", sts.Status.ObservedGeneration, sts.Generation)

@@ -32,8 +32,8 @@ var LogBuffer = NewSyncBuffer()
 
 // SyncBuffer is a thread-safe buffer implementation compatible with zapcore.WriteSyncer.
 type SyncBuffer struct {
-	buffer *bytes.Buffer
-	mu     sync.Mutex
+	buffer *bytes.Buffer // buffer stores the synchronized log output.
+	mu     sync.Mutex    // mu protects buffer from concurrent access.
 }
 
 // NewSyncBuffer creates a new SyncBuffer instance.

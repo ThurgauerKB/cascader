@@ -385,6 +385,27 @@ func TestSingleReplicaPodDeleted(t *testing.T) {
 		assert.False(t, result, "Expected isSingleReplicaPodDeleted to return false when no pods are deleted")
 	})
 
+	t.Run("Deployment scaled above one replica", func(t *testing.T) {
+		t.Parallel()
+
+		oldDep := &appsv1.Deployment{
+			Spec: appsv1.DeploymentSpec{Replicas: testutils.Int32Ptr(1)},
+			Status: appsv1.DeploymentStatus{
+				ReadyReplicas:     1,
+				AvailableReplicas: 1,
+			},
+		}
+		newDep := &appsv1.Deployment{
+			Spec: appsv1.DeploymentSpec{Replicas: testutils.Int32Ptr(2)},
+			Status: appsv1.DeploymentStatus{
+				ReadyReplicas:     0,
+				AvailableReplicas: 0,
+			},
+		}
+
+		assert.False(t, SingleReplicaPodDeleted(oldDep, newDep), "Scaling must not be treated as a lost only pod")
+	})
+
 	t.Run("Invalid object type", func(t *testing.T) {
 		t.Parallel()
 

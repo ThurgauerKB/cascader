@@ -18,7 +18,7 @@ package controller
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/thurgauerkb/cascader/internal/predicates"
 	"github.com/thurgauerkb/cascader/internal/workloads"
@@ -33,7 +33,7 @@ var DeploymentGVK = appsv1.SchemeGroupVersion.WithKind("Deployment")
 
 // DeploymentReconciler reconciles Deployments to detect restarts and target reloads.
 type DeploymentReconciler struct {
-	BaseReconciler
+	BaseReconciler // BaseReconciler provides shared reconciliation dependencies and behavior.
 }
 
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;patch
@@ -50,7 +50,7 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			logger.Info("Deployment not found; ignoring since object must be deleted")
 			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, errors.New("failed to fetch Deployment")
+		return ctrl.Result{}, fmt.Errorf("failed to fetch Deployment: %w", err)
 	}
 
 	return r.ReconcileWorkload(ctx, &workloads.DeploymentWorkload{Deployment: dep})
